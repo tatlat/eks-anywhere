@@ -25,10 +25,14 @@ type ClusterSpecOpt func(*cluster.Spec)
 var configFS embed.FS
 
 // DevEksaVersion can be used in tests.
-var DevEksaVersion v1alpha1.EksaVersion = "v0.0.0-dev"
+func DevEksaVersion() v1alpha1.EksaVersion {
+	version := v1alpha1.EksaVersion("v0.0.0-dev")
+	return version
+}
 
 func NewClusterSpec(opts ...ClusterSpecOpt) *cluster.Spec {
 	s := &cluster.Spec{}
+	version := DevEksaVersion()
 	s.Config = &cluster.Config{
 		Cluster: &v1alpha1.Cluster{
 			ObjectMeta: metav1.ObjectMeta{
@@ -36,6 +40,7 @@ func NewClusterSpec(opts ...ClusterSpecOpt) *cluster.Spec {
 			},
 			Spec: v1alpha1.ClusterSpec{
 				WorkerNodeGroupConfigurations: []v1alpha1.WorkerNodeGroupConfiguration{{}},
+				EksaVersion:                   &version,
 			},
 		},
 	}
@@ -79,6 +84,7 @@ func NewClusterSpecForConfig(tb testing.TB, config *cluster.Config) *cluster.Spe
 		config,
 		Bundles(tb),
 		EksdRelease(),
+		EKSARelease(),
 	)
 	if err != nil {
 		tb.Fatalf("Failed to build cluster spec: %s", err)

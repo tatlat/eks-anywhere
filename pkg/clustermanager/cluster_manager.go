@@ -143,6 +143,7 @@ type ClusterClient interface {
 	GetMachineDeployment(ctx context.Context, workerNodeGroupName string, opts ...executables.KubectlOpt) (*clusterv1.MachineDeployment, error)
 	GetEksdRelease(ctx context.Context, name, namespace, kubeconfigFile string) (*eksdv1alpha1.Release, error)
 	ListObjects(ctx context.Context, resourceType, namespace, kubeconfig string, list kubernetes.ObjectList) error
+	GetEKSARelease(ctx context.Context, kubeconfigFile, name, namespace string) (*releasev1alpha1.EKSARelease, error)
 }
 
 type Networking interface {
@@ -1105,7 +1106,10 @@ func (c *ClusterManager) CreateEKSAResources(ctx context.Context, cluster *types
 	if err = c.applyResource(ctx, cluster, resourcesSpec); err != nil {
 		return err
 	}
-	return c.ApplyBundles(ctx, clusterSpec, cluster)
+	if err = c.ApplyBundles(ctx, clusterSpec, cluster); err != nil {
+		return err
+	}
+	return c.applyReleases(ctx, clusterSpec, cluster)
 }
 
 func (c *ClusterManager) ApplyBundles(ctx context.Context, clusterSpec *cluster.Spec, cluster *types.Cluster) error {
@@ -1117,6 +1121,19 @@ func (c *ClusterManager) ApplyBundles(ctx context.Context, clusterSpec *cluster.
 	err = c.clusterClient.ApplyKubeSpecFromBytes(ctx, cluster, bundleObj)
 	if err != nil {
 		return fmt.Errorf("applying bundle spec: %v", err)
+	}
+	return nil
+}
+
+func (c *ClusterManager) applyReleases(ctx context.Context, clusterSpec *cluster.Spec, cluster *types.Cluster) error {
+	releaseObj, err := yaml.Marshal(clusterSpec.EKSARelease)
+	if err != nil {
+		return fmt.Errorf("outputting release yaml: %v", err)
+	}
+	logger.V(1).Info("Applying EKSARelease to cluster")
+	err = c.clusterClient.ApplyKubeSpecFromBytes(ctx, cluster, releaseObj)
+	if err != nil {
+		return fmt.Errorf("applying release spec: %v", err)
 	}
 	return nil
 }
@@ -1303,7 +1320,16 @@ func (c *ClusterManager) GetCurrentClusterSpec(ctx context.Context, clus *types.
 }
 
 func (c *ClusterManager) buildSpecForCluster(ctx context.Context, clus *types.Cluster, eksaCluster *v1alpha1.Cluster) (*cluster.Spec, error) {
-	return cluster.BuildSpecForCluster(ctx, eksaCluster, c.bundlesFetcher(clus), c.eksdReleaseFetcher(clus), c.gitOpsFetcher(clus), c.fluxConfigFetcher(clus), c.oidcFetcher(clus), c.awsIamConfigFetcher(clus))
+	fetchers := cluster.Fetchers{
+		BundlesFetch:      c.bundlesFetcher(clus),
+		EksdReleaseFetch:  c.eksdReleaseFetcher(clus),
+		GitOpsFetch:       c.gitOpsFetcher(clus),
+		FluxConfigFetch:   c.fluxConfigFetcher(clus),
+		OidcFetch:         c.oidcFetcher(clus),
+		AwsIamConfigFetch: c.awsIamConfigFetcher(clus),
+		EksaReleaseFetch:  c.eksaReleaseFetcher(clus),
+	}
+	return cluster.BuildSpecForCluster(ctx, eksaCluster, fetchers)
 }
 
 func (c *ClusterManager) bundlesFetcher(cluster *types.Cluster) cluster.BundlesFetch {
@@ -1339,6 +1365,12 @@ func (c *ClusterManager) oidcFetcher(cluster *types.Cluster) cluster.OIDCFetch {
 func (c *ClusterManager) awsIamConfigFetcher(cluster *types.Cluster) cluster.AWSIamConfigFetch {
 	return func(ctx context.Context, name, namespace string) (*v1alpha1.AWSIamConfig, error) {
 		return c.clusterClient.GetEksaAWSIamConfig(ctx, name, cluster.KubeconfigFile, namespace)
+	}
+}
+
+func (c *ClusterManager) eksaReleaseFetcher(cluster *types.Cluster) cluster.EKSAReleaseFetch {
+	return func(ctx context.Context, name, namespace string) (*releasev1alpha1.EKSARelease, error) {
+		return c.clusterClient.GetEKSARelease(ctx, cluster.KubeconfigFile, name, namespace)
 	}
 }
 

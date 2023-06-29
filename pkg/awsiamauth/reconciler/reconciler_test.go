@@ -181,6 +181,7 @@ func TestReconcileCAPIClusterNotFound(t *testing.T) {
 	_ = eksdv1.AddToScheme(scheme)
 	_ = clusterv1.AddToScheme(scheme)
 	cl := cb.WithScheme(scheme).WithRuntimeObjects(objs...).Build()
+	version := test.DevEksaVersion()
 
 	cluster := &anywherev1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{
@@ -194,6 +195,7 @@ func TestReconcileCAPIClusterNotFound(t *testing.T) {
 				Namespace:  bundle.Namespace,
 				APIVersion: bundle.APIVersion,
 			},
+			EksaVersion: &version,
 		},
 	}
 
@@ -213,6 +215,7 @@ func TestReconcileRemoteGetClientError(t *testing.T) {
 
 	bundle := test.Bundle()
 	eksdRelease := test.EksdRelease()
+	version := test.DevEksaVersion()
 	cluster := &anywherev1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "my-cluster",
@@ -225,6 +228,7 @@ func TestReconcileRemoteGetClientError(t *testing.T) {
 				Namespace:  bundle.Namespace,
 				APIVersion: bundle.APIVersion,
 			},
+			EksaVersion: &version,
 		},
 	}
 	capiCluster := test.CAPICluster(func(c *clusterv1.Cluster) {
@@ -263,6 +267,7 @@ func TestReconcileConfigMapNotFoundApplyError(t *testing.T) {
 
 	bundle := test.Bundle()
 	eksdRelease := test.EksdRelease()
+	version := test.DevEksaVersion()
 	cluster := &anywherev1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "my-cluster",
@@ -286,6 +291,7 @@ func TestReconcileConfigMapNotFoundApplyError(t *testing.T) {
 					Kind: "AWSIamConfig",
 				},
 			},
+			EksaVersion: &version,
 		},
 	}
 	capiCluster := test.CAPICluster(func(c *clusterv1.Cluster) {

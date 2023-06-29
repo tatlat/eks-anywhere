@@ -788,6 +788,7 @@ func newReconcilerTest(t testing.TB) *reconcilerTest {
 	ipValidator := tinkerbellreconcilermocks.NewMockIPValidator(ctrl)
 
 	bundle := test.Bundle()
+	version := test.DevEksaVersion()
 
 	managementClusterDatacenter := dataCenter(func(d *anywherev1.TinkerbellDatacenterConfig) {
 		d.Name = "management-datacenter"
@@ -807,6 +808,7 @@ func newReconcilerTest(t testing.TB) *reconcilerTest {
 			Kind: anywherev1.TinkerbellDatacenterKind,
 			Name: managementClusterDatacenter.Name,
 		}
+		c.Spec.EksaVersion = &version
 	})
 
 	machineConfigCP := machineConfig(func(m *anywherev1.TinkerbellMachineConfig) {
@@ -856,6 +858,8 @@ func newReconcilerTest(t testing.TB) *reconcilerTest {
 				Labels: nil,
 			},
 		)
+
+		c.Spec.EksaVersion = &version
 	})
 
 	tt := &reconcilerTest{

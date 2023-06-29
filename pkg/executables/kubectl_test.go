@@ -2193,6 +2193,40 @@ func TestKubectlGetBundles(t *testing.T) {
 	tt.Expect(gotBundles).To(Equal(wantBundles))
 }
 
+func TestKubectlGetEKSARelease(t *testing.T) {
+	t.Parallel()
+	tt := newKubectlTest(t)
+	wantRelease := test.EKSARelease()
+	releaseName := "eksa-v0-0-0-dev"
+	releaseJSON, err := json.Marshal(wantRelease)
+	if err != nil {
+		t.Fatalf("Failed marshalling EKSARelease: %s", err)
+	}
+
+	tt.e.EXPECT().Execute(
+		tt.ctx,
+		"get", "eksareleases.anywhere.eks.amazonaws.com", releaseName, "-o", "json", "--kubeconfig", tt.cluster.KubeconfigFile, "--namespace", tt.namespace,
+	).Return(*bytes.NewBuffer(releaseJSON), nil)
+
+	gotRelease, err := tt.k.GetEKSARelease(tt.ctx, tt.cluster.KubeconfigFile, releaseName, tt.namespace)
+	tt.Expect(err).To(BeNil())
+	tt.Expect(gotRelease).To(Equal(wantRelease))
+}
+
+func TestKubectlGetEKSAReleaseFailure(t *testing.T) {
+	t.Parallel()
+	tt := newKubectlTest(t)
+	releaseName := "eksa-v0-0-0-dev"
+
+	tt.e.EXPECT().Execute(
+		tt.ctx,
+		"get", "eksareleases.anywhere.eks.amazonaws.com", releaseName, "-o", "json", "--kubeconfig", tt.cluster.KubeconfigFile, "--namespace", tt.namespace,
+	).Return(bytes.Buffer{}, errors.New(""))
+
+	gotRelease, err := tt.k.GetEKSARelease(tt.ctx, tt.cluster.KubeconfigFile, releaseName, tt.namespace)
+	tt.Expect(err).To(HaveOccurred())
+	tt.Expect(gotRelease).To(BeNil())
+}
 func TestKubectlGetClusterResourceSet(t *testing.T) {
 	t.Parallel()
 	tt := newKubectlTest(t)

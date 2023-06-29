@@ -11,6 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
+	"github.com/aws/eks-anywhere/internal/test"
 	anywherev1 "github.com/aws/eks-anywhere/pkg/api/v1alpha1"
 	"github.com/aws/eks-anywhere/pkg/cluster"
 	"github.com/aws/eks-anywhere/pkg/cluster/mocks"
@@ -35,6 +36,7 @@ func TestBuildSpecForCluster(t *testing.T) {
 			Name: "myconfig",
 		},
 	}
+	version := test.DevEksaVersion()
 	config := &cluster.Config{
 		Cluster: &anywherev1.Cluster{
 			Spec: anywherev1.ClusterSpec{
@@ -53,6 +55,7 @@ func TestBuildSpecForCluster(t *testing.T) {
 					Kind: anywherev1.FluxConfigKind,
 					Name: "myconfig",
 				},
+				EksaVersion: &version,
 			},
 		},
 		OIDCConfigs: map[string]*anywherev1.OIDCConfig{
@@ -74,6 +77,7 @@ func TestBuildSpecForCluster(t *testing.T) {
 		},
 	}
 	eksdRelease := readEksdRelease(t, "testdata/eksd_valid.yaml")
+	eksaRelease := &releasev1.EKSARelease{}
 
 	bundlesFetch := func(_ context.Context, _, _ string) (*releasev1.Bundles, error) {
 		return bundles, nil
@@ -93,8 +97,21 @@ func TestBuildSpecForCluster(t *testing.T) {
 	awsIamConfigFetch := func(_ context.Context, _, _ string) (*anywherev1.AWSIamConfig, error) {
 		return awsIamConfig, nil
 	}
+	eksaReleaseFetch := func(_ context.Context, _, _ string) (*releasev1.EKSARelease, error) {
+		return eksaRelease, nil
+	}
 
-	spec, err := cluster.BuildSpecForCluster(ctx, config.Cluster, bundlesFetch, eksdFetch, gitOpsFetch, fluxConfigFetch, oidcFetch, awsIamConfigFetch)
+	fetchers := cluster.Fetchers{
+		BundlesFetch:      bundlesFetch,
+		EksdReleaseFetch:  eksdFetch,
+		GitOpsFetch:       gitOpsFetch,
+		FluxConfigFetch:   fluxConfigFetch,
+		OidcFetch:         oidcFetch,
+		AwsIamConfigFetch: awsIamConfigFetch,
+		EksaReleaseFetch:  eksaReleaseFetch,
+	}
+
+	spec, err := cluster.BuildSpecForCluster(ctx, config.Cluster, fetchers)
 	g.Expect(err).NotTo(HaveOccurred())
 	g.Expect(spec.Config).To(Equal(config))
 	g.Expect(spec.OIDCConfig).To(Equal(oidcConfig))
@@ -281,18 +298,17 @@ type buildSpecTest struct {
 	bundles     *releasev1.Bundles
 	eksdRelease *eksdv1.Release
 	kubeDistro  *cluster.KubeDistro
+	eksaRelease *releasev1.EKSARelease
 }
 
 func newBuildSpecTest(t *testing.T) *buildSpecTest {
 	ctrl := gomock.NewController(t)
 	client := mocks.NewMockClient(ctrl)
+	version := test.DevEksaVersion()
 	cluster := &anywherev1.Cluster{
 		Spec: anywherev1.ClusterSpec{
-			BundlesRef: &anywherev1.BundlesRef{
-				Name:      "bundles-1",
-				Namespace: "my-namespace",
-			},
 			KubernetesVersion: anywherev1.Kube123,
+			EksaVersion:       &version,
 		},
 	}
 	bundles := &releasev1.Bundles{
@@ -312,6 +328,18 @@ func newBuildSpecTest(t *testing.T) *buildSpecTest {
 	}
 	eksdRelease, kubeDistro := wantKubeDistroForEksdRelease()
 
+	eksaRelease := &releasev1.EKSARelease{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "eksa-v0-0-0-dev",
+		},
+		Spec: releasev1.EKSAReleaseSpec{
+			BundlesRef: releasev1.BundlesRef{
+				Name:      "bundles-1",
+				Namespace: "my-namespace",
+			},
+		},
+	}
+
 	return &buildSpecTest{
 		WithT:       NewWithT(t),
 		ctx:         context.Background(),
@@ -321,7 +349,19 @@ func newBuildSpecTest(t *testing.T) *buildSpecTest {
 		bundles:     bundles,
 		eksdRelease: eksdRelease,
 		kubeDistro:  kubeDistro,
+		eksaRelease: eksaRelease,
 	}
+}
+
+func (tt *buildSpecTest) expectGetEKSARelease() {
+	tt.client.EXPECT().Get(tt.ctx, "eksa-v0-0-0-dev", "eksa-system", &releasev1.EKSARelease{}).DoAndReturn(
+		func(ctx context.Context, name, namespace string, obj runtime.Object) error {
+			o := obj.(*releasev1.EKSARelease)
+			o.ObjectMeta = tt.eksaRelease.ObjectMeta
+			o.Spec = tt.eksaRelease.Spec
+			return nil
+		},
+	)
 }
 
 func (tt *buildSpecTest) expectGetBundles() {
@@ -348,6 +388,7 @@ func (tt *buildSpecTest) expectGetEksd() {
 
 func TestBuildSpec(t *testing.T) {
 	tt := newBuildSpecTest(t)
+	tt.expectGetEKSARelease()
 	tt.expectGetBundles()
 	tt.expectGetEksd()
 
@@ -373,8 +414,27 @@ func TestBuildSpec(t *testing.T) {
 	tt.Expect(spec.VersionsBundle).To(Equal(wantSpec.VersionsBundle))
 }
 
+func TestBuildSpecGetEKSAReleaseError(t *testing.T) {
+	tt := newBuildSpecTest(t)
+	tt.cluster.Spec.BundlesRef = nil
+	tt.client.EXPECT().Get(tt.ctx, "eksa-v0-0-0-dev", "eksa-system", &releasev1.EKSARelease{}).Return(errors.New("client error"))
+
+	_, err := cluster.BuildSpec(tt.ctx, tt.client, tt.cluster)
+	tt.Expect(err).To(MatchError(ContainSubstring("error getting EKSARelease")))
+}
+
+func TestBuildSpecNilEksaVersion(t *testing.T) {
+	tt := newBuildSpecTest(t)
+	tt.cluster.Spec.BundlesRef = nil
+	tt.cluster.Spec.EksaVersion = nil
+
+	_, err := cluster.BuildSpec(tt.ctx, tt.client, tt.cluster)
+	tt.Expect(err).To(MatchError(ContainSubstring("cluster's EksaVersion cannot be nil")))
+}
+
 func TestBuildSpecGetBundlesError(t *testing.T) {
 	tt := newBuildSpecTest(t)
+	tt.expectGetEKSARelease()
 	tt.client.EXPECT().Get(tt.ctx, "bundles-1", "my-namespace", &releasev1.Bundles{}).Return(errors.New("client error"))
 
 	_, err := cluster.BuildSpec(tt.ctx, tt.client, tt.cluster)
@@ -383,6 +443,7 @@ func TestBuildSpecGetBundlesError(t *testing.T) {
 
 func TestBuildSpecGetEksdError(t *testing.T) {
 	tt := newBuildSpecTest(t)
+	tt.expectGetEKSARelease()
 	tt.expectGetBundles()
 	tt.client.EXPECT().Get(tt.ctx, "eksd-123", "eksa-system", &eksdv1.Release{}).Return(errors.New("client error"))
 
@@ -407,6 +468,7 @@ func TestBuildSpecUnsupportedKubernetesVersionError(t *testing.T) {
 	tt := newBuildSpecTest(t)
 	tt.bundles.Spec.VersionsBundles = []releasev1.VersionsBundle{}
 	tt.bundles.Spec.Number = 2
+	tt.expectGetEKSARelease()
 	tt.expectGetBundles()
 
 	_, err := cluster.BuildSpec(tt.ctx, tt.client, tt.cluster)
@@ -416,6 +478,7 @@ func TestBuildSpecUnsupportedKubernetesVersionError(t *testing.T) {
 func TestBuildSpecInitError(t *testing.T) {
 	tt := newBuildSpecTest(t)
 	tt.eksdRelease.Status.Components = []eksdv1.Component{}
+	tt.expectGetEKSARelease()
 	tt.expectGetBundles()
 	tt.expectGetEksd()
 

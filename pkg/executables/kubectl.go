@@ -90,6 +90,7 @@ var (
 	eksaPackagesType                     = fmt.Sprintf("packages.%s", packagesv1.GroupVersion.Group)
 	eksaPackagesBundleControllerType     = fmt.Sprintf("packagebundlecontroller.%s", packagesv1.GroupVersion.Group)
 	eksaPackageBundlesType               = fmt.Sprintf("packagebundles.%s", packagesv1.GroupVersion.Group)
+	eksaReleaseResourceType              = fmt.Sprintf("eksareleases.%s", releasev1alpha1.GroupVersion.Group)
 	kubectlConnectionRefusedRegex        = regexp.MustCompile("The connection to the server .* was refused")
 	kubectlIoTimeoutRegex                = regexp.MustCompile("Unable to connect to the server.*i/o timeout.*")
 )
@@ -1880,6 +1881,23 @@ func (k *Kubectl) GetBundles(ctx context.Context, kubeconfigFile, name, namespac
 	err = json.Unmarshal(stdOut.Bytes(), response)
 	if err != nil {
 		return nil, fmt.Errorf("parsing Bundles response: %v", err)
+	}
+
+	return response, nil
+}
+
+// GetEKSARelease gets an EKSARelease resource from a cluster.
+func (k *Kubectl) GetEKSARelease(ctx context.Context, kubeconfigFile, name, namespace string) (*releasev1alpha1.EKSARelease, error) {
+	params := []string{"get", eksaReleaseResourceType, name, "-o", "json", "--kubeconfig", kubeconfigFile, "--namespace", namespace}
+	stdOut, err := k.Execute(ctx, params...)
+	if err != nil {
+		return nil, fmt.Errorf("getting EKSARelease with kubectl: %v", err)
+	}
+
+	response := &releasev1alpha1.EKSARelease{}
+	err = json.Unmarshal(stdOut.Bytes(), response)
+	if err != nil {
+		return nil, fmt.Errorf("parsing EKSARelease response: %v", err)
 	}
 
 	return response, nil

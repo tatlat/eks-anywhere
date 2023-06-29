@@ -290,6 +290,21 @@ func (mr *MockClusterClientMockRecorder) GetClusters(arg0, arg1 interface{}) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetClusters", reflect.TypeOf((*MockClusterClient)(nil).GetClusters), arg0, arg1)
 }
 
+// GetEKSARelease mocks base method.
+func (m *MockClusterClient) GetEKSARelease(arg0 context.Context, arg1, arg2, arg3 string) (*v1alpha10.EKSARelease, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetEKSARelease", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(*v1alpha10.EKSARelease)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetEKSARelease indicates an expected call of GetEKSARelease.
+func (mr *MockClusterClientMockRecorder) GetEKSARelease(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEKSARelease", reflect.TypeOf((*MockClusterClient)(nil).GetEKSARelease), arg0, arg1, arg2, arg3)
+}
+
 // GetEksaAWSIamConfig mocks base method.
 func (m *MockClusterClient) GetEksaAWSIamConfig(arg0 context.Context, arg1, arg2, arg3 string) (*v1alpha1.AWSIamConfig, error) {
 	m.ctrl.T.Helper()

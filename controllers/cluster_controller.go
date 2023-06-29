@@ -267,8 +267,14 @@ func (r *ClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 	// AddFinalizer	is idempotent
 	controllerutil.AddFinalizer(cluster, ClusterFinalizerName)
 
-	if cluster.Spec.BundlesRef == nil {
+	if cluster.Spec.BundlesRef == nil && cluster.Spec.EksaVersion == nil {
 		if err = r.setBundlesRef(ctx, cluster); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
+	if cluster.Spec.EksaVersion == nil && cluster.Spec.BundlesRef == nil {
+		if err = r.setDefaultEksaVersion(ctx, cluster); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
@@ -544,13 +550,38 @@ func aggregatedGeneration(config *cluster.Config) int64 {
 }
 
 func (r *ClusterReconciler) setBundlesRef(ctx context.Context, clus *anywherev1.Cluster) error {
+	mgmtCluster, err := validateManagementClusterExists(ctx, clus, r.client)
+	if err != nil {
+		return err
+	}
+
+	clus.Spec.BundlesRef = mgmtCluster.Spec.BundlesRef
+	return nil
+}
+
+func (r *ClusterReconciler) setDefaultEksaVersion(ctx context.Context, clus *anywherev1.Cluster) error {
+	mgmtCluster, err := validateManagementClusterExists(ctx, clus, r.client)
+	if err != nil {
+		return err
+	}
+
+	if mgmtCluster.Spec.EksaVersion == nil {
+		clus.Status.FailureMessage = ptr.String("Management cluster can't have nil EksaVersion")
+		return fmt.Errorf("mgmt cluster can't have nil EksaVersion")
+	}
+
+	clus.Spec.EksaVersion = mgmtCluster.Spec.EksaVersion
+	return nil
+}
+
+func validateManagementClusterExists(ctx context.Context, clus *anywherev1.Cluster, client client.Client) (*anywherev1.Cluster, error) {
 	mgmtCluster := &anywherev1.Cluster{}
-	if err := r.client.Get(ctx, types.NamespacedName{Name: clus.ManagedBy(), Namespace: clus.Namespace}, mgmtCluster); err != nil {
+	if err := client.Get(ctx, types.NamespacedName{Name: clus.ManagedBy(), Namespace: clus.Namespace}, mgmtCluster); err != nil {
 		if apierrors.IsNotFound(err) {
 			clus.Status.FailureMessage = ptr.String(fmt.Sprintf("Management cluster %s does not exist", clus.Spec.ManagementCluster.Name))
 		}
-		return err
+		return nil, err
 	}
-	clus.Spec.BundlesRef = mgmtCluster.Spec.BundlesRef
-	return nil
+
+	return mgmtCluster, nil
 }

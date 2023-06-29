@@ -288,6 +288,7 @@ func newReconcilerTest(t testing.TB) *reconcilerTest {
 	c := env.Client()
 
 	bundle := test.Bundle()
+	version := test.DevEksaVersion()
 
 	managementCluster := snowCluster(func(c *anywherev1.Cluster) {
 		c.Name = "management-cluster"
@@ -299,6 +300,7 @@ func newReconcilerTest(t testing.TB) *reconcilerTest {
 			Namespace:  bundle.Namespace,
 			APIVersion: bundle.APIVersion,
 		}
+		c.Spec.EksaVersion = &version
 	})
 
 	machineConfigCP := snowMachineConfig(func(m *anywherev1.SnowMachineConfig) {
@@ -361,6 +363,8 @@ func newReconcilerTest(t testing.TB) *reconcilerTest {
 				Labels: nil,
 			},
 		)
+
+		c.Spec.EksaVersion = &version
 	})
 
 	tt := &reconcilerTest{

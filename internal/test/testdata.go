@@ -211,3 +211,28 @@ func MachineDeployment(opts ...MachineDeploymentOpt) *clusterv1.MachineDeploymen
 
 	return md
 }
+
+// EKSARelease returns a test eksaRelease struct for unit testing.
+func EKSARelease() *releasev1.EKSARelease {
+	return &releasev1.EKSARelease{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       releasev1.EKSAReleaseKind,
+			APIVersion: releasev1.GroupVersion.String(),
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "eksa-v0-0-0-dev",
+			Namespace: constants.EksaSystemNamespace,
+		},
+		Spec: releasev1.EKSAReleaseSpec{
+			ReleaseDate:       "",
+			Version:           "",
+			GitCommit:         "",
+			BundleManifestURL: "",
+			BundlesRef: releasev1.BundlesRef{
+				Name:       "bundles-1",
+				Namespace:  "default",
+				APIVersion: releasev1.GroupVersion.String(),
+			},
+		},
+	}
+}

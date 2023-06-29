@@ -643,6 +643,7 @@ func TestClusterManagerUpgradeSelfManagedClusterSuccess(t *testing.T) {
 	tt.mocks.writer.EXPECT().Write(clusterName+"-eks-a-cluster.yaml", gomock.Any(), gomock.Not(gomock.Nil()))
 	tt.mocks.client.EXPECT().GetEksaOIDCConfig(tt.ctx, tt.clusterSpec.Cluster.Spec.IdentityProviderRefs[0].Name, tt.cluster.KubeconfigFile, tt.clusterSpec.Cluster.Namespace).Return(nil, nil)
 	tt.mocks.networking.EXPECT().RunPostControlPlaneUpgradeSetup(tt.ctx, tt.cluster).Return(nil)
+	tt.mocks.client.EXPECT().GetEKSARelease(tt.ctx, tt.cluster.KubeconfigFile, "eksa-v0-0-0-dev", constants.EksaSystemNamespace).Return(test.EKSARelease(), nil)
 
 	if err := tt.clusterManager.UpgradeCluster(tt.ctx, mCluster, wCluster, tt.clusterSpec, tt.mocks.provider); err != nil {
 		t.Errorf("ClusterManager.UpgradeCluster() error = %v, wantErr nil", err)
@@ -699,6 +700,7 @@ func TestClusterManagerUpgradeSelfManagedClusterWithUnstackedEtcdSuccess(t *test
 	tt.mocks.writer.EXPECT().Write(clusterName+"-eks-a-cluster.yaml", gomock.Any(), gomock.Not(gomock.Nil()))
 	tt.mocks.client.EXPECT().GetEksaOIDCConfig(tt.ctx, tt.clusterSpec.Cluster.Spec.IdentityProviderRefs[0].Name, tt.cluster.KubeconfigFile, tt.clusterSpec.Cluster.Namespace).Return(nil, nil)
 	tt.mocks.networking.EXPECT().RunPostControlPlaneUpgradeSetup(tt.ctx, tt.cluster).Return(nil)
+	tt.mocks.client.EXPECT().GetEKSARelease(tt.ctx, tt.cluster.KubeconfigFile, "eksa-v0-0-0-dev", constants.EksaSystemNamespace).Return(test.EKSARelease(), nil)
 
 	if err := tt.clusterManager.UpgradeCluster(tt.ctx, mCluster, wCluster, tt.clusterSpec, tt.mocks.provider); err != nil {
 		t.Errorf("ClusterManager.UpgradeCluster() error = %v, wantErr nil", err)
@@ -755,6 +757,7 @@ func TestClusterManagerUpgradeSelfManagedClusterWithUnstackedEtcdTimeoutNotReady
 	tt.mocks.writer.EXPECT().Write(clusterName+"-eks-a-cluster.yaml", gomock.Any(), gomock.Not(gomock.Nil()))
 	tt.mocks.client.EXPECT().GetEksaOIDCConfig(tt.ctx, tt.clusterSpec.Cluster.Spec.IdentityProviderRefs[0].Name, tt.cluster.KubeconfigFile, tt.clusterSpec.Cluster.Namespace).Return(nil, nil)
 	tt.mocks.networking.EXPECT().RunPostControlPlaneUpgradeSetup(tt.ctx, tt.cluster).Return(nil)
+	tt.mocks.client.EXPECT().GetEKSARelease(tt.ctx, tt.cluster.KubeconfigFile, "eksa-v0-0-0-dev", constants.EksaSystemNamespace).Return(test.EKSARelease(), nil)
 
 	if err := tt.clusterManager.UpgradeCluster(tt.ctx, mCluster, wCluster, tt.clusterSpec, tt.mocks.provider); err != nil {
 		t.Errorf("ClusterManager.UpgradeCluster() error = %v, wantErr nil", err)
@@ -787,6 +790,7 @@ func TestClusterManagerUpgradeSelfManagedClusterWithUnstackedEtcdNotReadyError(t
 	tt.mocks.client.EXPECT().WaitForManagedExternalEtcdNotReady(tt.ctx, mCluster, "1m", clusterName).Return(errors.New("etcd not ready"))
 	tt.mocks.client.EXPECT().GetEksaOIDCConfig(tt.ctx, tt.clusterSpec.Cluster.Spec.IdentityProviderRefs[0].Name, tt.cluster.KubeconfigFile, tt.clusterSpec.Cluster.Namespace).Return(nil, nil)
 	tt.mocks.writer.EXPECT().Write(clusterName+"-eks-a-cluster.yaml", gomock.Any(), gomock.Not(gomock.Nil()))
+	tt.mocks.client.EXPECT().GetEKSARelease(tt.ctx, tt.cluster.KubeconfigFile, "eksa-v0-0-0-dev", constants.EksaSystemNamespace).Return(test.EKSARelease(), nil)
 
 	tt.Expect(tt.clusterManager.UpgradeCluster(tt.ctx, mCluster, wCluster, tt.clusterSpec, tt.mocks.provider)).To(MatchError(ContainSubstring("etcd not ready")))
 }
@@ -819,6 +823,7 @@ func TestClusterManagerUpgradeSelfManagedClusterWithUnstackedEtcdErrorRemovingAn
 	tt.mocks.client.EXPECT().RemoveAnnotationInNamespace(tt.ctx, gomock.Any(), gomock.Any(), gomock.Any(), mCluster, constants.EksaSystemNamespace).Return(errors.New("removing annotation"))
 	tt.mocks.client.EXPECT().GetEksaOIDCConfig(tt.ctx, tt.clusterSpec.Cluster.Spec.IdentityProviderRefs[0].Name, tt.cluster.KubeconfigFile, tt.clusterSpec.Cluster.Namespace).Return(nil, nil)
 	tt.mocks.writer.EXPECT().Write(clusterName+"-eks-a-cluster.yaml", gomock.Any(), gomock.Not(gomock.Nil()))
+	tt.mocks.client.EXPECT().GetEKSARelease(tt.ctx, tt.cluster.KubeconfigFile, "eksa-v0-0-0-dev", constants.EksaSystemNamespace).Return(test.EKSARelease(), nil)
 
 	tt.Expect(tt.clusterManager.UpgradeCluster(tt.ctx, mCluster, wCluster, tt.clusterSpec, tt.mocks.provider)).To(MatchError(ContainSubstring("removing annotation")))
 }
@@ -866,6 +871,7 @@ func TestClusterManagerUpgradeWorkloadClusterSuccess(t *testing.T) {
 	tt.mocks.writer.EXPECT().Write(mgmtClusterName+"-eks-a-cluster.yaml", gomock.Any(), gomock.Not(gomock.Nil()))
 	tt.mocks.client.EXPECT().GetEksaOIDCConfig(tt.ctx, tt.clusterSpec.Cluster.Spec.IdentityProviderRefs[0].Name, mCluster.KubeconfigFile, tt.clusterSpec.Cluster.Namespace).Return(nil, nil)
 	tt.mocks.networking.EXPECT().RunPostControlPlaneUpgradeSetup(tt.ctx, wCluster).Return(nil)
+	tt.mocks.client.EXPECT().GetEKSARelease(tt.ctx, tt.cluster.KubeconfigFile, "eksa-v0-0-0-dev", constants.EksaSystemNamespace).Return(test.EKSARelease(), nil)
 
 	if err := tt.clusterManager.UpgradeCluster(tt.ctx, mCluster, wCluster, tt.clusterSpec, tt.mocks.provider); err != nil {
 		t.Errorf("ClusterManager.UpgradeCluster() error = %v, wantErr nil", err)
@@ -934,6 +940,7 @@ func TestClusterManagerUpgradeWorkloadClusterAWSIamConfigSuccess(t *testing.T) {
 	tt.mocks.writer.EXPECT().Write(mgmtClusterName+"-eks-a-cluster.yaml", gomock.Any(), gomock.Not(gomock.Nil()))
 	tt.mocks.networking.EXPECT().RunPostControlPlaneUpgradeSetup(tt.ctx, wCluster).Return(nil)
 	tt.mocks.awsIamAuth.EXPECT().UpgradeAWSIAMAuth(tt.ctx, wCluster, tt.clusterSpec).Return(nil)
+	tt.mocks.client.EXPECT().GetEKSARelease(tt.ctx, tt.cluster.KubeconfigFile, "eksa-v0-0-0-dev", constants.EksaSystemNamespace).Return(test.EKSARelease(), nil)
 
 	if err := tt.clusterManager.UpgradeCluster(tt.ctx, mCluster, wCluster, tt.clusterSpec, tt.mocks.provider); err != nil {
 		t.Errorf("ClusterManager.UpgradeCluster() error = %v, wantErr nil", err)
@@ -983,6 +990,7 @@ func TestClusterManagerUpgradeCloudStackWorkloadClusterSuccess(t *testing.T) {
 	tt.mocks.writer.EXPECT().Write(mgmtClusterName+"-eks-a-cluster.yaml", gomock.Any(), gomock.Not(gomock.Nil()))
 	tt.mocks.client.EXPECT().GetEksaOIDCConfig(tt.ctx, tt.clusterSpec.Cluster.Spec.IdentityProviderRefs[0].Name, mCluster.KubeconfigFile, tt.clusterSpec.Cluster.Namespace).Return(nil, nil)
 	tt.mocks.networking.EXPECT().RunPostControlPlaneUpgradeSetup(tt.ctx, wCluster).Return(nil)
+	tt.mocks.client.EXPECT().GetEKSARelease(tt.ctx, tt.cluster.KubeconfigFile, "eksa-v0-0-0-dev", constants.EksaSystemNamespace).Return(test.EKSARelease(), nil)
 
 	if err := tt.clusterManager.UpgradeCluster(tt.ctx, mCluster, wCluster, tt.clusterSpec, tt.mocks.provider); err != nil {
 		t.Errorf("ClusterManager.UpgradeCluster() error = %v, wantErr nil", err)
@@ -1035,6 +1043,7 @@ func TestClusterManagerUpgradeWorkloadClusterWaitForMDReadyErrorOnce(t *testing.
 	tt.mocks.writer.EXPECT().Write(mgmtClusterName+"-eks-a-cluster.yaml", gomock.Any(), gomock.Not(gomock.Nil()))
 	tt.mocks.client.EXPECT().GetEksaOIDCConfig(tt.ctx, tt.clusterSpec.Cluster.Spec.IdentityProviderRefs[0].Name, mCluster.KubeconfigFile, tt.clusterSpec.Cluster.Namespace).Return(nil, nil)
 	tt.mocks.networking.EXPECT().RunPostControlPlaneUpgradeSetup(tt.ctx, wCluster).Return(nil)
+	tt.mocks.client.EXPECT().GetEKSARelease(tt.ctx, tt.cluster.KubeconfigFile, "eksa-v0-0-0-dev", constants.EksaSystemNamespace).Return(test.EKSARelease(), nil)
 
 	if err := tt.clusterManager.UpgradeCluster(tt.ctx, mCluster, wCluster, tt.clusterSpec, tt.mocks.provider); err != nil {
 		t.Errorf("ClusterManager.UpgradeCluster() error = %v, wantErr nil", err)
@@ -1087,6 +1096,7 @@ func TestClusterManagerUpgradeWorkloadClusterWaitForMDReadyUnreadyOnce(t *testin
 	tt.mocks.writer.EXPECT().Write(mgmtClusterName+"-eks-a-cluster.yaml", gomock.Any(), gomock.Not(gomock.Nil()))
 	tt.mocks.client.EXPECT().GetEksaOIDCConfig(tt.ctx, tt.clusterSpec.Cluster.Spec.IdentityProviderRefs[0].Name, mCluster.KubeconfigFile, tt.clusterSpec.Cluster.Namespace).Return(nil, nil)
 	tt.mocks.networking.EXPECT().RunPostControlPlaneUpgradeSetup(tt.ctx, wCluster).Return(nil)
+	tt.mocks.client.EXPECT().GetEKSARelease(tt.ctx, tt.cluster.KubeconfigFile, "eksa-v0-0-0-dev", constants.EksaSystemNamespace).Return(test.EKSARelease(), nil)
 
 	if err := tt.clusterManager.UpgradeCluster(tt.ctx, mCluster, wCluster, tt.clusterSpec, tt.mocks.provider); err != nil {
 		t.Errorf("ClusterManager.UpgradeCluster() error = %v, wantErr nil", err)
@@ -1128,6 +1138,7 @@ func TestClusterManagerUpgradeWorkloadClusterWaitForMachinesTimeout(t *testing.T
 	tt.mocks.client.EXPECT().GetMachines(ctx, mCluster, mCluster.Name).MinTimes(1).Return([]types.Machine{{Metadata: types.MachineMetadata{
 		Labels: map[string]string{clusterv1.MachineControlPlaneNameLabel: ""},
 	}}}, nil)
+	tt.mocks.client.EXPECT().GetEKSARelease(tt.ctx, tt.cluster.KubeconfigFile, "eksa-v0-0-0-dev", constants.EksaSystemNamespace).Return(test.EKSARelease(), nil)
 
 	if err := tt.clusterManager.UpgradeCluster(ctx, mCluster, wCluster, tt.clusterSpec, tt.mocks.provider); err == nil {
 		t.Error("ClusterManager.UpgradeCluster() error = nil, wantErr not nil")
@@ -1169,6 +1180,7 @@ func TestClusterManagerUpgradeWorkloadClusterGetMachineDeploymentError(t *testin
 	tt.mocks.writer.EXPECT().Write(mgmtClusterName+"-eks-a-cluster.yaml", gomock.Any(), gomock.Not(gomock.Nil()))
 	tt.mocks.client.EXPECT().GetEksaOIDCConfig(tt.ctx, tt.clusterSpec.Cluster.Spec.IdentityProviderRefs[0].Name, mCluster.KubeconfigFile, tt.clusterSpec.Cluster.Namespace).Return(nil, nil)
 	tt.mocks.networking.EXPECT().RunPostControlPlaneUpgradeSetup(tt.ctx, wCluster).Return(nil)
+	tt.mocks.client.EXPECT().GetEKSARelease(tt.ctx, tt.cluster.KubeconfigFile, "eksa-v0-0-0-dev", constants.EksaSystemNamespace).Return(test.EKSARelease(), nil)
 
 	tt.Expect(tt.clusterManager.UpgradeCluster(tt.ctx, mCluster, wCluster, tt.clusterSpec, tt.mocks.provider)).To(MatchError(ContainSubstring("md err")))
 }
@@ -1209,6 +1221,7 @@ func TestClusterManagerUpgradeWorkloadClusterRemoveOldWorkerNodeGroupsError(t *t
 	tt.mocks.writer.EXPECT().Write(mgmtClusterName+"-eks-a-cluster.yaml", gomock.Any(), gomock.Not(gomock.Nil()))
 	tt.mocks.client.EXPECT().GetEksaOIDCConfig(tt.ctx, tt.clusterSpec.Cluster.Spec.IdentityProviderRefs[0].Name, mCluster.KubeconfigFile, tt.clusterSpec.Cluster.Namespace).Return(nil, nil)
 	tt.mocks.networking.EXPECT().RunPostControlPlaneUpgradeSetup(tt.ctx, wCluster).Return(nil)
+	tt.mocks.client.EXPECT().GetEKSARelease(tt.ctx, tt.cluster.KubeconfigFile, "eksa-v0-0-0-dev", constants.EksaSystemNamespace).Return(test.EKSARelease(), nil)
 
 	tt.Expect(tt.clusterManager.UpgradeCluster(tt.ctx, mCluster, wCluster, tt.clusterSpec, tt.mocks.provider)).To(MatchError(ContainSubstring("wng err")))
 }
@@ -1256,6 +1269,7 @@ func TestClusterManagerUpgradeWorkloadClusterWaitForMachinesFailedWithUnhealthyN
 	// Return a machine with no nodeRef the rest of the retries
 	tt.mocks.client.EXPECT().GetMachines(tt.ctx, mCluster, mCluster.Name).MinTimes(1).Return(machines, nil)
 	tt.mocks.client.EXPECT().GetEksaOIDCConfig(tt.ctx, tt.clusterSpec.Cluster.Spec.IdentityProviderRefs[0].Name, tt.cluster.KubeconfigFile, tt.clusterSpec.Cluster.Namespace).Return(nil, nil)
+	tt.mocks.client.EXPECT().GetEKSARelease(tt.ctx, tt.cluster.KubeconfigFile, "eksa-v0-0-0-dev", constants.EksaSystemNamespace).Return(test.EKSARelease(), nil)
 
 	if err := tt.clusterManager.UpgradeCluster(tt.ctx, mCluster, wCluster, tt.clusterSpec, tt.mocks.provider); err == nil {
 		t.Error("ClusterManager.UpgradeCluster() error = nil, wantErr not nil")
@@ -1301,6 +1315,7 @@ func TestClusterManagerUpgradeWorkloadClusterWaitForCAPITimeout(t *testing.T) {
 	tt.mocks.writer.EXPECT().Write(clusterName+"-eks-a-cluster.yaml", gomock.Any(), gomock.Not(gomock.Nil()))
 	tt.mocks.client.EXPECT().GetEksaOIDCConfig(tt.ctx, tt.clusterSpec.Cluster.Spec.IdentityProviderRefs[0].Name, tt.cluster.KubeconfigFile, tt.clusterSpec.Cluster.Namespace).Return(nil, nil)
 	tt.mocks.networking.EXPECT().RunPostControlPlaneUpgradeSetup(tt.ctx, wCluster).Return(nil)
+	tt.mocks.client.EXPECT().GetEKSARelease(tt.ctx, tt.cluster.KubeconfigFile, "eksa-v0-0-0-dev", constants.EksaSystemNamespace).Return(test.EKSARelease(), nil)
 
 	if err := tt.clusterManager.UpgradeCluster(tt.ctx, mCluster, wCluster, tt.clusterSpec, tt.mocks.provider); err == nil {
 		t.Error("ClusterManager.UpgradeCluster() error = nil, wantErr not nil")
@@ -1723,7 +1738,8 @@ func TestClusterManagerCreateEKSAResourcesSuccess(t *testing.T) {
 	c, m := newClusterManager(t)
 
 	m.client.EXPECT().ApplyKubeSpecFromBytesForce(ctx, tt.cluster, gomock.Any())
-	m.client.EXPECT().ApplyKubeSpecFromBytes(ctx, tt.cluster, gomock.Any())
+	// ApplyKubeSpecFromBytes is called twice. Once for Bundles and again for EKSARelease.
+	m.client.EXPECT().ApplyKubeSpecFromBytes(ctx, tt.cluster, gomock.Any()).MaxTimes(2)
 	m.client.EXPECT().ApplyKubeSpecFromBytesWithNamespace(ctx, tt.cluster, gomock.Any(), gomock.Any()).MaxTimes(2)
 	tt.Expect(c.CreateEKSAResources(ctx, tt.cluster, tt.clusterSpec, datacenterConfig, machineConfigs)).To(Succeed())
 	_, ok := datacenterConfig.GetAnnotations()["anywhere.eks.amazonaws.com/paused"]
@@ -1746,6 +1762,69 @@ func TestClusterManagerCreateEKSAResourcesFailure(t *testing.T) {
 	c, m := newClusterManager(t)
 
 	m.client.EXPECT().CreateNamespaceIfNotPresent(ctx, gomock.Any(), tt.clusterSpec.Cluster.Namespace).Return(errors.New(""))
+	tt.Expect(c.CreateEKSAResources(ctx, tt.cluster, tt.clusterSpec, datacenterConfig, machineConfigs)).NotTo(Succeed())
+}
+
+func TestClusterManagerCreateEKSAResourcesFailureBundles(t *testing.T) {
+	features.ClearCache()
+	ctx := context.Background()
+	tt := newTest(t)
+	tt.clusterSpec.VersionsBundle.EksD.Components = "testdata/eksa_components.yaml"
+	tt.clusterSpec.VersionsBundle.EksD.EksDReleaseUrl = "testdata/eksa_components.yaml"
+	tt.clusterSpec.Cluster.Namespace = "test_namespace"
+
+	datacenterConfig := &v1alpha1.VSphereDatacenterConfig{}
+	machineConfigs := []providers.MachineConfig{}
+
+	mockCtrl := gomock.NewController(t)
+	m := &clusterManagerMocks{
+		writer:             mockswriter.NewMockFileWriter(mockCtrl),
+		networking:         mocksmanager.NewMockNetworking(mockCtrl),
+		awsIamAuth:         mocksmanager.NewMockAwsIamAuth(mockCtrl),
+		client:             mocksmanager.NewMockClusterClient(mockCtrl),
+		provider:           mocksprovider.NewMockProvider(mockCtrl),
+		diagnosticsFactory: mocksdiagnostics.NewMockDiagnosticBundleFactory(mockCtrl),
+		diagnosticsBundle:  mocksdiagnostics.NewMockDiagnosticBundle(mockCtrl),
+		eksaComponents:     mocksmanager.NewMockEKSAComponents(mockCtrl),
+	}
+	client := clustermanager.NewRetrierClient(m.client, retrier.NewWithMaxRetries(1, 1))
+	c := clustermanager.New(client, m.networking, m.writer, m.diagnosticsFactory, m.awsIamAuth, m.eksaComponents)
+
+	m.client.EXPECT().CreateNamespaceIfNotPresent(ctx, gomock.Any(), tt.clusterSpec.Cluster.Namespace).Return(nil)
+	m.client.EXPECT().ApplyKubeSpecFromBytesForce(ctx, gomock.Any(), gomock.Any()).Return(nil)
+	m.client.EXPECT().ApplyKubeSpecFromBytes(ctx, gomock.Any(), gomock.Any()).Return(errors.New(""))
+	tt.Expect(c.CreateEKSAResources(ctx, tt.cluster, tt.clusterSpec, datacenterConfig, machineConfigs)).NotTo(Succeed())
+}
+
+func TestClusterManagerCreateEKSAResourcesFailureEKSARelease(t *testing.T) {
+	features.ClearCache()
+	ctx := context.Background()
+	tt := newTest(t)
+	tt.clusterSpec.VersionsBundle.EksD.Components = "testdata/eksa_components.yaml"
+	tt.clusterSpec.VersionsBundle.EksD.EksDReleaseUrl = "testdata/eksa_components.yaml"
+	tt.clusterSpec.Cluster.Namespace = "test_namespace"
+
+	datacenterConfig := &v1alpha1.VSphereDatacenterConfig{}
+	machineConfigs := []providers.MachineConfig{}
+
+	mockCtrl := gomock.NewController(t)
+	m := &clusterManagerMocks{
+		writer:             mockswriter.NewMockFileWriter(mockCtrl),
+		networking:         mocksmanager.NewMockNetworking(mockCtrl),
+		awsIamAuth:         mocksmanager.NewMockAwsIamAuth(mockCtrl),
+		client:             mocksmanager.NewMockClusterClient(mockCtrl),
+		provider:           mocksprovider.NewMockProvider(mockCtrl),
+		diagnosticsFactory: mocksdiagnostics.NewMockDiagnosticBundleFactory(mockCtrl),
+		diagnosticsBundle:  mocksdiagnostics.NewMockDiagnosticBundle(mockCtrl),
+		eksaComponents:     mocksmanager.NewMockEKSAComponents(mockCtrl),
+	}
+	client := clustermanager.NewRetrierClient(m.client, retrier.NewWithMaxRetries(1, 1))
+	c := clustermanager.New(client, m.networking, m.writer, m.diagnosticsFactory, m.awsIamAuth, m.eksaComponents)
+
+	m.client.EXPECT().CreateNamespaceIfNotPresent(ctx, gomock.Any(), tt.clusterSpec.Cluster.Namespace).Return(nil)
+	m.client.EXPECT().ApplyKubeSpecFromBytesForce(ctx, gomock.Any(), gomock.Any()).Return(nil)
+	m.client.EXPECT().ApplyKubeSpecFromBytes(ctx, gomock.Any(), gomock.Any()).Return(nil)
+	m.client.EXPECT().ApplyKubeSpecFromBytes(ctx, gomock.Any(), gomock.Any()).Return(errors.New(""))
 	tt.Expect(c.CreateEKSAResources(ctx, tt.cluster, tt.clusterSpec, datacenterConfig, machineConfigs)).NotTo(Succeed())
 }
 
@@ -2281,6 +2360,7 @@ type specChangedTest struct {
 func newSpecChangedTest(t *testing.T, opts ...clustermanager.ClusterManagerOpt) *specChangedTest {
 	testSetup := newTest(t, opts...)
 	clusterName := testSetup.clusterName
+	version := test.DevEksaVersion()
 	clusterConfig := &v1alpha1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: clusterName,
@@ -2310,6 +2390,7 @@ func newSpecChangedTest(t *testing.T, opts ...clustermanager.ClusterManagerOpt) 
 				Kind: v1alpha1.OIDCConfigKind,
 				Name: clusterName,
 			}},
+			EksaVersion: &version,
 		},
 	}
 	newClusterConfig := clusterConfig.DeepCopy()
@@ -2371,6 +2452,7 @@ func TestClusterManagerClusterSpecChangedNoChanges(t *testing.T) {
 	tt.mocks.client.EXPECT().GetBundles(tt.ctx, tt.cluster.KubeconfigFile, tt.cluster.Name, "").Return(test.Bundles(t), nil)
 	tt.mocks.client.EXPECT().GetEksdRelease(tt.ctx, gomock.Any(), constants.EksaSystemNamespace, gomock.Any()).Return(test.EksdRelease(), nil)
 	tt.mocks.client.EXPECT().GetEksaOIDCConfig(tt.ctx, tt.oldClusterConfig.Spec.IdentityProviderRefs[0].Name, tt.cluster.KubeconfigFile, tt.clusterSpec.Cluster.Namespace).Return(tt.oldOIDCConfig, nil)
+	tt.mocks.client.EXPECT().GetEKSARelease(tt.ctx, tt.cluster.KubeconfigFile, "eksa-v0-0-0-dev", constants.EksaSystemNamespace).Return(test.EKSARelease(), nil)
 	diff, err := tt.clusterManager.EKSAClusterSpecChanged(tt.ctx, tt.cluster, tt.clusterSpec)
 	assert.Nil(t, err, "Error should be nil")
 	assert.False(t, diff, "No changes should have been detected")
@@ -2394,6 +2476,7 @@ func TestClusterManagerClusterSpecChangedEksDReleaseChanged(t *testing.T) {
 	tt.mocks.client.EXPECT().GetBundles(tt.ctx, tt.cluster.KubeconfigFile, tt.cluster.Name, "").Return(test.Bundles(t), nil)
 	tt.mocks.client.EXPECT().GetEksdRelease(tt.ctx, gomock.Any(), constants.EksaSystemNamespace, gomock.Any()).Return(test.EksdRelease(), nil)
 	tt.mocks.client.EXPECT().GetEksaOIDCConfig(tt.ctx, tt.clusterSpec.Cluster.Spec.IdentityProviderRefs[0].Name, tt.cluster.KubeconfigFile, tt.clusterSpec.Cluster.Namespace).Return(tt.oldOIDCConfig, nil)
+	tt.mocks.client.EXPECT().GetEKSARelease(tt.ctx, tt.cluster.KubeconfigFile, "eksa-v0-0-0-dev", constants.EksaSystemNamespace).Return(test.EKSARelease(), nil)
 	diff, err := tt.clusterManager.EKSAClusterSpecChanged(tt.ctx, tt.cluster, tt.clusterSpec)
 	assert.Nil(t, err, "Error should be nil")
 	assert.True(t, diff, "Changes should have been detected")
@@ -2412,6 +2495,7 @@ func TestClusterManagerClusterSpecChangedGitOpsDefault(t *testing.T) {
 	tt.mocks.client.EXPECT().GetBundles(tt.ctx, tt.cluster.KubeconfigFile, tt.cluster.Name, "").Return(test.Bundles(t), nil)
 	tt.mocks.client.EXPECT().GetEksdRelease(tt.ctx, gomock.Any(), constants.EksaSystemNamespace, gomock.Any()).Return(test.EksdRelease(), nil)
 	tt.mocks.client.EXPECT().GetEksaOIDCConfig(tt.ctx, tt.clusterSpec.Cluster.Spec.IdentityProviderRefs[0].Name, tt.cluster.KubeconfigFile, tt.clusterSpec.Cluster.Namespace).Return(tt.oldOIDCConfig, nil)
+	tt.mocks.client.EXPECT().GetEKSARelease(tt.ctx, tt.cluster.KubeconfigFile, "eksa-v0-0-0-dev", constants.EksaSystemNamespace).Return(test.EKSARelease(), nil)
 	diff, err := tt.clusterManager.EKSAClusterSpecChanged(tt.ctx, tt.cluster, tt.clusterSpec)
 
 	assert.Nil(t, err, "Error should be nil")
@@ -2432,6 +2516,7 @@ func TestClusterManagerClusterSpecChangedAWSIamConfigChanged(t *testing.T) {
 	tt.mocks.client.EXPECT().GetBundles(tt.ctx, tt.cluster.KubeconfigFile, tt.cluster.Name, "").Return(test.Bundles(t), nil)
 	tt.mocks.client.EXPECT().GetEksdRelease(tt.ctx, gomock.Any(), constants.EksaSystemNamespace, gomock.Any()).Return(test.EksdRelease(), nil)
 	tt.mocks.client.EXPECT().GetEksaAWSIamConfig(tt.ctx, tt.clusterSpec.Cluster.Spec.IdentityProviderRefs[0].Name, tt.cluster.KubeconfigFile, tt.clusterSpec.Cluster.Namespace).Return(oldIamConfig, nil)
+	tt.mocks.client.EXPECT().GetEKSARelease(tt.ctx, tt.cluster.KubeconfigFile, "eksa-v0-0-0-dev", constants.EksaSystemNamespace).Return(test.EKSARelease(), nil)
 	diff, err := tt.clusterManager.EKSAClusterSpecChanged(tt.ctx, tt.cluster, tt.clusterSpec)
 
 	assert.Nil(t, err, "Error should be nil")
