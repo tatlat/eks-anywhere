@@ -402,6 +402,8 @@ type WorkerNodeGroupConfiguration struct {
 	// UpgradeRolloutStrategy determines the rollout strategy to use for rolling upgrades
 	// and related parameters/knobs
 	UpgradeRolloutStrategy *WorkerNodesUpgradeRolloutStrategy `json:"upgradeRolloutStrategy,omitempty"`
+	// KuberenetesVersion is the kubernetes version for worker nodes. Defaults to the cluster spec's KubernetesVersion.
+	KubernetesVersion *KubernetesVersion `json:"kubernetesVersion,omitempty"`
 }
 
 func generateWorkerNodeGroupKey(c WorkerNodeGroupConfiguration) (key string) {
@@ -440,7 +442,43 @@ func WorkerNodeGroupConfigurationsSliceEqual(a, b []WorkerNodeGroupConfiguration
 		return false
 	}
 
+	if !WorkerNodeGroupConfigurationsKubeVersionEqual(a, b) {
+		return false
+	}
+
 	return WorkerNodeGroupConfigurationSliceTaintsEqual(a, b) && WorkerNodeGroupConfigurationsLabelsMapEqual(a, b)
+}
+
+// WorkerNodeGroupConfigurationsKubeVersionEqual checks to see if all kubernetesVersion are equal in old and new worker node group conig.
+func WorkerNodeGroupConfigurationsKubeVersionEqual(a, b []WorkerNodeGroupConfiguration) bool {
+	m := make(map[string]*KubernetesVersion, len(a))
+	for _, nodeGroup := range a {
+		m[nodeGroup.Name] = nodeGroup.KubernetesVersion
+	}
+
+	for _, nodeGroup := range b {
+		if _, ok := m[nodeGroup.Name]; !ok {
+			// this method is not concerned with added/removed node groups,
+			// only with the comparison of KubernetesVersion on existing node groups
+			// if a node group is present in a but not b, or vise versa, it's immaterial
+			continue
+		} else {
+			n := nodeGroup.KubernetesVersion
+			o := m[nodeGroup.Name]
+
+			if !kubeVersionPtrEqual(n, o) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func kubeVersionPtrEqual(n, o *KubernetesVersion) bool {
+	if n == nil || o == nil {
+		return n == o
+	}
+	return *n == *o
 }
 
 func WorkerNodeGroupConfigurationSliceTaintsEqual(a, b []WorkerNodeGroupConfiguration) bool {
