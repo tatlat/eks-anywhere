@@ -312,6 +312,10 @@ func fillProxyConfigurations(values map[string]interface{}, clusterSpec *cluster
 
 func buildTemplateMapMD(clusterSpec *cluster.Spec, workerNodeGroupConfiguration v1alpha1.WorkerNodeGroupConfiguration) (map[string]interface{}, error) {
 	bundle := clusterSpec.VersionsBundle
+	wv, ok := clusterSpec.WorkerVersions[workerNodeGroupConfiguration.Name]
+	if workerNodeGroupConfiguration.KubernetesVersion != nil && ok {
+		bundle = wv.VersionsBundle
+	}
 	format := "cloud-config"
 	kubeletExtraArgs := clusterapi.SecureTlsCipherSuitesExtraArgs().
 		Append(clusterapi.WorkerNodeLabelsExtraArgs(workerNodeGroupConfiguration)).

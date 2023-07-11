@@ -256,6 +256,10 @@ func buildTemplateMapCP(
 func buildTemplateMapMD(clusterSpec *cluster.Spec, workerNodeGroupMachineSpec v1alpha1.NutanixMachineConfigSpec, workerNodeGroupConfiguration v1alpha1.WorkerNodeGroupConfiguration) (map[string]interface{}, error) {
 	bundle := clusterSpec.VersionsBundle
 	format := "cloud-config"
+	wv, ok := clusterSpec.WorkerVersions[workerNodeGroupConfiguration.Name]
+	if workerNodeGroupConfiguration.KubernetesVersion != nil && ok {
+		bundle = wv.VersionsBundle
+	}
 
 	kubeletExtraArgs := clusterapi.SecureTlsCipherSuitesExtraArgs().
 		Append(clusterapi.ResolvConfExtraArgs(clusterSpec.Cluster.Spec.ClusterNetwork.DNS.ResolvConf)).
