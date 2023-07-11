@@ -12,6 +12,7 @@ import (
 
 	"github.com/aws/eks-anywhere/pkg/logger"
 	"github.com/aws/eks-anywhere/pkg/semver"
+	"github.com/aws/eks-anywhere/pkg/utils/ptr"
 )
 
 const (
@@ -32,6 +33,9 @@ const (
 
 	// etcdAnnotation can be applied to EKS-A machineconfig CR for etcd, to prevent controller from making changes to it.
 	etcdAnnotation = "anywhere.eks.amazonaws.com/etcd"
+
+	// skipIPCheckAnnotation skips the availability control plane IP validation during cluster creation. Use only if your network configuration is conflicting with the default port scan.
+	skipIPCheckAnnotation = "anywhere.eks.amazonaws.com/skip-ip-check"
 
 	// managementAnnotation points to the name of a management cluster
 	// cluster object.
@@ -870,11 +874,51 @@ var validCiliumPolicyEnforcementModes = map[CiliumPolicyEnforcementMode]bool{
 	CiliumPolicyModeNever:   true,
 }
 
+// FailureReasonType is a type for defining failure reasons.
+type FailureReasonType string
+
+// Reasons for the terminal failures while reconciling the Cluster object.
+const (
+	// MissingDependentObjectsReason reports that the Cluster is missing dependent objects.
+	MissingDependentObjectsReason FailureReasonType = "MissingDependentObjects"
+
+	// ManagementClusterRefInvalidReason reports that the Cluster management cluster reference is invalid. This
+	// can whether if it does not exist or the cluster referenced is not a management cluster.
+	ManagementClusterRefInvalidReason FailureReasonType = "ManagementClusterRefInvalid"
+
+	// ClusterInvalidReason reports that the Cluster spec validation has failed.
+	ClusterInvalidReason FailureReasonType = "ClusterInvalid"
+
+	// DatacenterConfigInvalidReason reports that the Cluster datacenterconfig validation has failed.
+	DatacenterConfigInvalidReason FailureReasonType = "DatacenterConfigInvalid"
+
+	// MachineConfigInvalidReason reports that the Cluster machineconfig validation has failed.
+	MachineConfigInvalidReason FailureReasonType = "MachineConfigInvalid"
+
+	// UnavailableControlPlaneIPReason reports that the Cluster controlPlaneIP is already in use.
+	UnavailableControlPlaneIPReason FailureReasonType = "UnavailableControlPlaneIP"
+)
+
+// Reasons for the terminal failures while reconciling the Cluster object specific for Tinkerbell.
+const (
+	// HardwareInvalidReason reports that the hardware validation has failed.
+	HardwareInvalidReason FailureReasonType = "HardwareInvalid"
+
+	// MachineInvalidReason reports that the baremetal machine validation has failed.
+	MachineInvalidReason FailureReasonType = "MachineInvalid"
+)
+
 // ClusterStatus defines the observed state of Cluster.
 type ClusterStatus struct {
 	// Descriptive message about a fatal problem while reconciling a cluster
 	// +optional
 	FailureMessage *string `json:"failureMessage,omitempty"`
+
+	// Machine readable value about a terminal problem while reconciling the cluster
+	// set at the same time as failureMessage
+	// +optional
+	FailureReason *FailureReasonType `json:"failureReason,omitempty"`
+
 	// EksdReleaseRef defines the properties of the EKS-D object on the cluster
 	EksdReleaseRef *EksdReleaseRef `json:"eksdReleaseRef,omitempty"`
 	// +optional
@@ -1194,6 +1238,22 @@ func (c *Cluster) ControlPlaneAnnotation() string {
 	return controlPlaneAnnotation
 }
 
+// DisableControlPlaneIPCheck sets the `skip-ip-check` annotation on the Cluster object.
+func (c *Cluster) DisableControlPlaneIPCheck() {
+	if c.Annotations == nil {
+		c.Annotations = make(map[string]string, 1)
+	}
+	c.Annotations[skipIPCheckAnnotation] = "true"
+}
+
+// ControlPlaneIPCheckDisabled checks it the `skip-ip-check` annotation is set on the Cluster object.
+func (c *Cluster) ControlPlaneIPCheckDisabled() bool {
+	if s, ok := c.Annotations[skipIPCheckAnnotation]; ok {
+		return s == "true"
+	}
+	return false
+}
+
 func (c *Cluster) ResourceType() string {
 	return clusterResourceType
 }
@@ -1247,6 +1307,18 @@ func (c *Cluster) MachineConfigRefs() []Ref {
 	}
 
 	return machineConfigRefMap.toSlice()
+}
+
+// SetFailure sets the failureMessage and failureReason of the Cluster status.
+func (c *Cluster) SetFailure(failureReason FailureReasonType, failureMessage string) {
+	c.Status.FailureMessage = ptr.String(failureMessage)
+	c.Status.FailureReason = &failureReason
+}
+
+// ClearFailure clears the failureMessage and failureReason of the Cluster status by setting them to nil.
+func (c *Cluster) ClearFailure() {
+	c.Status.FailureMessage = nil
+	c.Status.FailureReason = nil
 }
 
 type refSet map[Ref]struct{}

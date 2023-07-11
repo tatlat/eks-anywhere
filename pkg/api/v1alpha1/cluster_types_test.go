@@ -2842,3 +2842,82 @@ func TestClusterIsSingleNode(t *testing.T) {
 		})
 	}
 }
+
+func TestCluster_SetFailure(t *testing.T) {
+	g := NewWithT(t)
+	wantFailureMessage := "invalid cluster"
+	wantFailureReason := v1alpha1.FailureReasonType("InvalidCluster")
+	cluster := &v1alpha1.Cluster{}
+	cluster.SetFailure(wantFailureReason, wantFailureMessage)
+	g.Expect(cluster.Status.FailureMessage).To(HaveValue(Equal(wantFailureMessage)))
+	g.Expect(cluster.Status.FailureReason).To(HaveValue(Equal(wantFailureReason)))
+}
+
+func TestCluster_ClearFailure(t *testing.T) {
+	g := NewWithT(t)
+	failureMessage := "invalid cluster"
+	failureReason := v1alpha1.FailureReasonType("InvalidCluster")
+	cluster := &v1alpha1.Cluster{
+		Status: v1alpha1.ClusterStatus{
+			FailureMessage: &failureMessage,
+			FailureReason:  &failureReason,
+		},
+	}
+
+	cluster.ClearFailure()
+	g.Expect(cluster.Status.FailureMessage).To(BeNil())
+	g.Expect(cluster.Status.FailureReason).To(BeNil())
+}
+
+func TestClusterDisableControlPlaneIPCheck(t *testing.T) {
+	tests := []struct {
+		name    string
+		want    bool
+		cluster *v1alpha1.Cluster
+	}{
+		{
+			name:    "success",
+			want:    true,
+			cluster: &v1alpha1.Cluster{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.cluster.DisableControlPlaneIPCheck()
+			got := tt.cluster.ControlPlaneIPCheckDisabled()
+			if got != tt.want {
+				t.Errorf("DisableControlPlaneIPCheck() %v = %v, want %v", tt.name, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestClusterControlPlaneIPCheckDisabled(t *testing.T) {
+	tests := []struct {
+		name    string
+		cluster *v1alpha1.Cluster
+		want    bool
+	}{
+		{
+			name: "annotation exists",
+			want: true,
+			cluster: baseCluster(func(c *v1alpha1.Cluster) {
+				c.DisableControlPlaneIPCheck()
+			}),
+		},
+		{
+			name: "annotation does not exist",
+			want: false,
+			cluster: baseCluster(func(c *v1alpha1.Cluster) {
+				c.Annotations = nil
+			}),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.cluster.ControlPlaneIPCheckDisabled(); got != tt.want {
+				t.Errorf("ControlPlaneIPCheckDisabled() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

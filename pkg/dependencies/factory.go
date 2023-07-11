@@ -16,6 +16,7 @@ import (
 	"github.com/aws/eks-anywhere/pkg/aws"
 	"github.com/aws/eks-anywhere/pkg/awsiamauth"
 	"github.com/aws/eks-anywhere/pkg/bootstrapper"
+	"github.com/aws/eks-anywhere/pkg/cli"
 	"github.com/aws/eks-anywhere/pkg/clients/kubernetes"
 	"github.com/aws/eks-anywhere/pkg/cluster"
 	"github.com/aws/eks-anywhere/pkg/clusterapi"
@@ -92,6 +93,7 @@ type Dependencies struct {
 	ManifestReader              *manifests.Reader
 	closers                     []types.Closer
 	CliConfig                   *cliconfig.CliConfig
+	CreateCliConfig             *cliconfig.CreateClusterCLIConfig
 	PackageInstaller            interfaces.PackageInstaller
 	BundleRegistry              curatedpackages.BundleRegistry
 	PackageControllerClient     *curatedpackages.PackageControllerClient
@@ -104,6 +106,7 @@ type Dependencies struct {
 	SnowValidator               *snow.Validator
 	IPValidator                 *validator.IPValidator
 	UnAuthKubectlClient         KubeClients
+	CreateClusterDefaulter      cli.CreateClusterDefaulter
 }
 
 // KubeClients defines super struct that exposes all behavior.
@@ -1004,6 +1007,21 @@ func (f *Factory) WithCliConfig(cliConfig *cliconfig.CliConfig) *Factory {
 	return f
 }
 
+// WithCreateClusterDefaulter builds a create cluster defaulter that builds defaulter dependencies specific to the create cluster command. The defaulter is then run once the factory is built in the create cluster command.
+func (f *Factory) WithCreateClusterDefaulter(createCliConfig cliconfig.CreateClusterCLIConfig) *Factory {
+	f.buildSteps = append(f.buildSteps, func(ctx context.Context) error {
+		controlPlaneIPCheckAnnotationDefaulter := cluster.NewControlPlaneIPCheckAnnotationDefaulter(createCliConfig.SkipCPIPCheck)
+
+		createClusterDefaulter := cli.NewCreateClusterDefaulter(controlPlaneIPCheckAnnotationDefaulter)
+
+		f.dependencies.CreateClusterDefaulter = createClusterDefaulter
+
+		return nil
+	})
+
+	return f
+}
+
 type eksdInstallerClient struct {
 	*executables.Kubectl
 }
@@ -1193,6 +1211,16 @@ func (f *Factory) WithPackageControllerClient(spec *cluster.Spec, kubeConfig str
 
 		httpProxy, httpsProxy, noProxy := getProxyConfiguration(spec)
 		eksaAccessKeyID, eksaSecretKey, eksaRegion := os.Getenv(cliconfig.EksaAccessKeyIdEnv), os.Getenv(cliconfig.EksaSecretAccessKeyEnv), os.Getenv(cliconfig.EksaRegionEnv)
+
+		eksaAwsConfig := ""
+		p := os.Getenv(cliconfig.EksaAwsConfigFileEnv)
+		if p != "" {
+			b, err := os.ReadFile(p)
+			if err != nil {
+				return err
+			}
+			eksaAwsConfig = string(b)
+		}
 		writer, err := filewriter.NewWriter(spec.Cluster.Name)
 		if err != nil {
 			return err
@@ -1207,6 +1235,7 @@ func (f *Factory) WithPackageControllerClient(spec *cluster.Spec, kubeConfig str
 			curatedpackages.WithEksaAccessKeyId(eksaAccessKeyID),
 			curatedpackages.WithEksaSecretAccessKey(eksaSecretKey),
 			curatedpackages.WithEksaRegion(eksaRegion),
+			curatedpackages.WithEksaAwsConfig(eksaAwsConfig),
 			curatedpackages.WithHTTPProxy(httpProxy),
 			curatedpackages.WithHTTPSProxy(httpsProxy),
 			curatedpackages.WithNoProxy(noProxy),
