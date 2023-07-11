@@ -245,6 +245,11 @@ func MachineDeployment(clusterSpec *cluster.Spec, workerNodeGroupConfig anywhere
 	clusterName := clusterSpec.Cluster.GetName()
 	replicas := int32(*workerNodeGroupConfig.Count)
 	version := clusterSpec.VersionsBundle.KubeDistro.Kubernetes.Tag
+	wv, ok := clusterSpec.WorkerVersions[workerNodeGroupConfig.Name]
+
+	if workerNodeGroupConfig.KubernetesVersion != nil && ok {
+		version = wv.VersionsBundle.KubeDistro.Kubernetes.Tag
+	}
 
 	md := &clusterv1.MachineDeployment{
 		TypeMeta: metav1.TypeMeta{

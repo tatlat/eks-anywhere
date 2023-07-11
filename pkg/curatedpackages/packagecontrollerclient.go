@@ -489,7 +489,7 @@ func (pc *PackageControllerClient) getBundleFromCluster(ctx context.Context, cli
 		return nil, fmt.Errorf("retrieving bundle: %w", err)
 	}
 
-	verBundle, err := cluster.GetVersionsBundle(clusterObj, bundles)
+	verBundle, err := cluster.GetVersionsBundle(clusterObj.Spec.KubernetesVersion, bundles)
 	if err != nil {
 		return nil, err
 	}

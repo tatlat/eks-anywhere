@@ -71,7 +71,7 @@ func TestNewSpecError(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			g := NewWithT(t)
-			g.Expect(cluster.NewSpec(tt.config, tt.bundles, tt.eksdRelease)).Error().To(
+			g.Expect(cluster.NewSpec(tt.config, tt.bundles, tt.eksdRelease, make(map[string]*eksdv1.Release))).Error().To(
 				MatchError(ContainSubstring(tt.error)),
 			)
 		})
@@ -105,7 +105,7 @@ func TestNewSpecValid(t *testing.T) {
 	}
 	eksdRelease := readEksdRelease(t, "testdata/eksd_valid.yaml")
 
-	spec, err := cluster.NewSpec(config, bundles, eksdRelease)
+	spec, err := cluster.NewSpec(config, bundles, eksdRelease, make(map[string]*eksdv1.Release))
 	g.Expect(err).NotTo(HaveOccurred())
 	g.Expect(spec.AWSIamConfig).NotTo(BeNil())
 	g.Expect(spec.OIDCConfig).NotTo(BeNil())
@@ -120,7 +120,7 @@ func TestSpecDeepCopy(t *testing.T) {
 	g.Expect(err).To(Succeed())
 	bundles := test.Bundles(t)
 	eksd := test.EksdRelease()
-	spec, err := cluster.NewSpec(config, bundles, eksd)
+	spec, err := cluster.NewSpec(config, bundles, eksd, make(map[string]*eksdv1.Release))
 	g.Expect(err).To(Succeed())
 
 	g.Expect(spec.DeepCopy()).To(Equal(spec))
