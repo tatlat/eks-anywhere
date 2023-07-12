@@ -400,6 +400,7 @@ func ValidateWorkerKubernetesVersionSkew(new, old *Cluster) field.ErrorList {
 	path := field.NewPath("spec").Child("WorkerNodeConfiguration.kubernetesVersion")
 
 	topKubeVersion := new.Spec.KubernetesVersion
+	oldTopKubeVersion := old.Spec.KubernetesVersion
 
 	workerNodeGroupMap := make(map[string]*WorkerNodeGroupConfiguration)
 	for i := range old.Spec.WorkerNodeGroupConfigurations {
@@ -427,7 +428,7 @@ func ValidateWorkerKubernetesVersionSkew(new, old *Cluster) field.ErrorList {
 			if oldVersion == nil && newVersion != nil {
 				allErrs = append(
 					allErrs,
-					validateKubeVersionSkew(*newVersion, topKubeVersion, path)...,
+					validateKubeVersionSkew(*newVersion, oldTopKubeVersion, path)...,
 				)
 			}
 

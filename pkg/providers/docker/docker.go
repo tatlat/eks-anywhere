@@ -305,16 +305,18 @@ func buildTemplateMapCP(clusterSpec *cluster.Spec) (map[string]interface{}, erro
 }
 
 func buildTemplateMapMD(clusterSpec *cluster.Spec, workerNodeGroupConfiguration v1alpha1.WorkerNodeGroupConfiguration) (map[string]interface{}, error) {
+	kubeVersion := clusterSpec.Cluster.Spec.KubernetesVersion
 	bundle := clusterSpec.VersionsBundle
 	wv, ok := clusterSpec.WorkerVersions[workerNodeGroupConfiguration.Name]
 	if workerNodeGroupConfiguration.KubernetesVersion != nil && ok {
 		bundle = wv.VersionsBundle
+		kubeVersion = *workerNodeGroupConfiguration.KubernetesVersion
 	}
 	kubeletExtraArgs := clusterapi.SecureTlsCipherSuitesExtraArgs().
 		Append(clusterapi.WorkerNodeLabelsExtraArgs(workerNodeGroupConfiguration)).
 		Append(clusterapi.ResolvConfExtraArgs(clusterSpec.Cluster.Spec.ClusterNetwork.DNS.ResolvConf))
 
-	cgroupDriverArgs, err := kubeletCgroupDriverExtraArgs(clusterSpec.Cluster.Spec.KubernetesVersion)
+	cgroupDriverArgs, err := kubeletCgroupDriverExtraArgs(kubeVersion)
 	if err != nil {
 		return nil, err
 	}
