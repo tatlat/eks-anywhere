@@ -424,6 +424,13 @@ func ValidateWorkerKubernetesVersionSkew(new, old *Cluster) field.ErrorList {
 				)
 			}
 
+			if oldVersion == nil && newVersion != nil {
+				allErrs = append(
+					allErrs,
+					validateKubeVersionSkew(*newVersion, topKubeVersion, path)...,
+				)
+			}
+
 			if newVersion != nil {
 				allErrs = append(
 					allErrs,

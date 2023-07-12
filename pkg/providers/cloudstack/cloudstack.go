@@ -447,16 +447,13 @@ func needsNewControlPlaneTemplate(oldSpec, newSpec *cluster.Spec, oldCsmc, newCs
 	return NeedNewMachineTemplate(oldSpec.CloudStackDatacenter, newSpec.CloudStackDatacenter, oldCsmc, newCsmc, log)
 }
 
-func NeedsNewWorkloadTemplate(oldSpec, newSpec *cluster.Spec, oldCsdc, newCsdc *v1alpha1.CloudStackDatacenterConfig, oldCsmc, newCsmc *v1alpha1.CloudStackMachineConfig, log logr.Logger) bool {
-	if oldSpec.Cluster.Spec.KubernetesVersion != newSpec.Cluster.Spec.KubernetesVersion {
-		return true
-	}
+func NeedsNewWorkloadTemplate(oldSpec, newSpec *cluster.Spec, oldCsdc, newCsdc *v1alpha1.CloudStackDatacenterConfig, oldCsmc, newCsmc *v1alpha1.CloudStackMachineConfig, oldWorker, newWorker v1alpha1.WorkerNodeGroupConfiguration, log logr.Logger) bool {
 	if oldSpec.Bundles.Spec.Number != newSpec.Bundles.Spec.Number {
 		return true
 	}
 	if !v1alpha1.WorkerNodeGroupConfigurationSliceTaintsEqual(oldSpec.Cluster.Spec.WorkerNodeGroupConfigurations, newSpec.Cluster.Spec.WorkerNodeGroupConfigurations) ||
 		!v1alpha1.WorkerNodeGroupConfigurationsLabelsMapEqual(oldSpec.Cluster.Spec.WorkerNodeGroupConfigurations, newSpec.Cluster.Spec.WorkerNodeGroupConfigurations) ||
-		!v1alpha1.WorkerNodeGroupConfigurationsKubeVersionEqual(oldSpec.Cluster.Spec.WorkerNodeGroupConfigurations, newSpec.Cluster.Spec.WorkerNodeGroupConfigurations) {
+		!v1alpha1.WorkerNodeGroupConfigurationKubeVersionUnchanged(&newWorker, &oldWorker, newSpec.Cluster.Spec.KubernetesVersion, oldSpec.Cluster.Spec.KubernetesVersion) {
 		return true
 	}
 	return NeedNewMachineTemplate(oldCsdc, newCsdc, oldCsmc, newCsmc, log)
@@ -483,7 +480,7 @@ func (p *cloudstackProvider) needsNewMachineTemplate(ctx context.Context, worklo
 		if err != nil {
 			return false, err
 		}
-		needsNewWorkloadTemplate := NeedsNewWorkloadTemplate(currentSpec, newClusterSpec, csdc, newClusterSpec.CloudStackDatacenter, oldWorkerMachineConfig, newWorkerMachineConfig, p.log)
+		needsNewWorkloadTemplate := NeedsNewWorkloadTemplate(currentSpec, newClusterSpec, csdc, newClusterSpec.CloudStackDatacenter, oldWorkerMachineConfig, newWorkerMachineConfig, oldWorkerNodeGroup, workerNodeGroupConfiguration, p.log)
 		return needsNewWorkloadTemplate, nil
 	}
 	return true, nil

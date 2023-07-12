@@ -485,6 +485,20 @@ func kubeVersionPtrEqual(n, o *KubernetesVersion) bool {
 	return *n == *o
 }
 
+func WorkerNodeGroupConfigurationKubeVersionUnchanged(o, n *WorkerNodeGroupConfiguration, oldTopVersion, newTopVersion KubernetesVersion) bool {
+	oldVersion := o.KubernetesVersion
+	newVersion := n.KubernetesVersion
+
+	if oldVersion == nil {
+		oldVersion = &oldTopVersion
+	}
+	if newVersion == nil {
+		newVersion = &newTopVersion
+	}
+
+	return kubeVersionPtrEqual(newVersion, oldVersion)
+}
+
 func WorkerNodeGroupConfigurationSliceTaintsEqual(a, b []WorkerNodeGroupConfiguration) bool {
 	m := make(map[string][]corev1.Taint, len(a))
 	for _, nodeGroup := range a {
