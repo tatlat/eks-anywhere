@@ -414,7 +414,7 @@ func ValidateWorkerKubernetesVersionSkew(new, old *Cluster) field.ErrorList {
 			if oldVersion != nil && newVersion == nil {
 				allErrs = append(
 					allErrs,
-					validateRemoveWorkerKubernetesVersion(topKubeVersion, oldTopKubeVersion, newVersion)...,
+					validateRemoveWorkerKubernetesVersion(topKubeVersion, oldTopKubeVersion, newVersion, oldVersion)...,
 				)
 			}
 
@@ -444,15 +444,23 @@ func ValidateWorkerKubernetesVersionSkew(new, old *Cluster) field.ErrorList {
 	return allErrs
 }
 
-func validateRemoveWorkerKubernetesVersion(newCPVersion, oldCPVersion KubernetesVersion, workerVersion *KubernetesVersion) field.ErrorList {
+func validateRemoveWorkerKubernetesVersion(newCPVersion, oldCPVersion KubernetesVersion, newWorkerVersion, oldWorkerVersion *KubernetesVersion) field.ErrorList {
 	var allErrs field.ErrorList
 	path := field.NewPath("spec").Child("WorkerNodeConfiguration.kubernetesVersion")
+
+	parsedWorkerVersion, err := version.ParseGeneric(string(*oldWorkerVersion))
+	if err != nil {
+		allErrs = append(
+			allErrs,
+			field.Invalid(path, newWorkerVersion, fmt.Sprintf("could not parse version: %v, %v", oldWorkerVersion, err)))
+		return allErrs
+	}
 
 	parsedOldVersion, err := version.ParseGeneric(string(oldCPVersion))
 	if err != nil {
 		allErrs = append(
 			allErrs,
-			field.Invalid(path, workerVersion, fmt.Sprintf("could not parse version: %v, %v", oldCPVersion, err)))
+			field.Invalid(path, newWorkerVersion, fmt.Sprintf("could not parse version: %v, %v", oldCPVersion, err)))
 		return allErrs
 	}
 
@@ -460,14 +468,21 @@ func validateRemoveWorkerKubernetesVersion(newCPVersion, oldCPVersion Kubernetes
 	if err != nil {
 		allErrs = append(
 			allErrs,
-			field.Invalid(path, workerVersion, fmt.Sprintf("could not parse version: %v, %v", newCPVersion, err)))
+			field.Invalid(path, newWorkerVersion, fmt.Sprintf("could not parse version: %v, %v", newCPVersion, err)))
 		return allErrs
 	}
 
 	if parsedOldVersion.LessThan(parsedNewVersion) {
 		allErrs = append(
 			allErrs,
-			field.Invalid(path, workerVersion, fmt.Sprintf("can't simultaneously remove worker kubernetesVersion and upgrade top level kubernetesVersion: %v", newCPVersion)))
+			field.Invalid(path, newWorkerVersion, fmt.Sprintf("can't simultaneously remove worker kubernetesVersion and upgrade top level kubernetesVersion: %v", newCPVersion)))
+		return allErrs
+	}
+
+	if err := ValidateVersionSkew(parsedWorkerVersion, parsedNewVersion); err != nil {
+		allErrs = append(
+			allErrs,
+			field.Invalid(path, newWorkerVersion, err.Error()))
 	}
 
 	return allErrs
