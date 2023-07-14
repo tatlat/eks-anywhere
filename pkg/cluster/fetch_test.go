@@ -135,6 +135,21 @@ func TestBuildSpecGetEksdError(t *testing.T) {
 	tt.Expect(err).To(MatchError(ContainSubstring("client error")))
 }
 
+func TestBuildSpecGetEksdErrorWorkerNodes(t *testing.T) {
+	tt := newBuildSpecTest(t)
+	tt.cluster.Spec.WorkerNodeGroupConfigurations = []anywherev1.WorkerNodeGroupConfiguration{
+		{
+			KubernetesVersion: &tt.cluster.Spec.KubernetesVersion,
+		},
+	}
+	tt.expectGetBundles()
+	tt.expectGetEksd()
+	tt.client.EXPECT().Get(tt.ctx, "eksd-123", "eksa-system", &eksdv1.Release{}).Return(errors.New("client error"))
+
+	_, err := cluster.BuildSpec(tt.ctx, tt.client, tt.cluster)
+	tt.Expect(err).To(MatchError(ContainSubstring("client error")))
+}
+
 func TestBuildSpecBuildConfigError(t *testing.T) {
 	tt := newBuildSpecTest(t)
 	tt.cluster.Namespace = "default"

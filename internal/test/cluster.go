@@ -79,6 +79,7 @@ func NewClusterSpecForConfig(tb testing.TB, config *cluster.Config) *cluster.Spe
 		config,
 		Bundles(tb),
 		EksdRelease(),
+		make(map[string]*eksdv1alpha1.Release),
 	)
 	if err != nil {
 		tb.Fatalf("Failed to build cluster spec: %s", err)

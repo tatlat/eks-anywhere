@@ -26,8 +26,9 @@ func bundlesNamespacedKey(cluster *v1alpha1.Cluster) (name, namespace string) {
 	return name, namespace
 }
 
-func GetVersionsBundle(clusterConfig *v1alpha1.Cluster, bundles *v1alpha1release.Bundles) (*v1alpha1release.VersionsBundle, error) {
-	return getVersionsBundleForKubernetesVersion(clusterConfig.Spec.KubernetesVersion, bundles)
+// GetVersionBundle gets the VersionsBundle that corresponds to KubernetesVersion.
+func GetVersionsBundle(version v1alpha1.KubernetesVersion, bundles *v1alpha1release.Bundles) (*v1alpha1release.VersionsBundle, error) {
+	return getVersionsBundleForKubernetesVersion(version, bundles)
 }
 
 func getVersionsBundleForKubernetesVersion(kubernetesVersion v1alpha1.KubernetesVersion, bundles *v1alpha1release.Bundles) (*v1alpha1release.VersionsBundle, error) {
@@ -59,7 +60,29 @@ func BuildSpecFromConfig(ctx context.Context, client Client, config *Config) (*S
 		return nil, err
 	}
 
-	versionsBundle, err := GetVersionsBundle(config.Cluster, bundles)
+	eksdRelease, err := getEksdRelease(ctx, client, config.Cluster.Spec.KubernetesVersion, bundles)
+	if err != nil {
+		return nil, err
+	}
+
+	workerEksdReleases := make(map[string]*eksdv1alpha1.Release)
+
+	for _, wng := range config.Cluster.Spec.WorkerNodeGroupConfigurations {
+		if wng.KubernetesVersion != nil {
+			wer, err := getEksdRelease(ctx, client, *wng.KubernetesVersion, bundles)
+			if err != nil {
+				return nil, err
+			}
+
+			workerEksdReleases[wng.Name] = wer
+		}
+	}
+
+	return NewSpec(config, bundles, eksdRelease, workerEksdReleases)
+}
+
+func getEksdRelease(ctx context.Context, client Client, version v1alpha1.KubernetesVersion, bundles *v1alpha1release.Bundles) (*eksdv1alpha1.Release, error) {
+	versionsBundle, err := GetVersionsBundle(version, bundles)
 	if err != nil {
 		return nil, err
 	}
@@ -71,5 +94,5 @@ func BuildSpecFromConfig(ctx context.Context, client Client, config *Config) (*S
 		return nil, err
 	}
 
-	return NewSpec(config, bundles, eksdRelease)
+	return eksdRelease, nil
 }

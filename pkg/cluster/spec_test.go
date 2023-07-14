@@ -20,12 +20,14 @@ import (
 var testdataFS embed.FS
 
 func TestNewSpecError(t *testing.T) {
+	kubeVersion := anywherev1.KubernetesVersion("1.24")
 	tests := []struct {
-		name        string
-		config      *cluster.Config
-		bundles     *releasev1.Bundles
-		eksdRelease *eksdv1.Release
-		error       string
+		name              string
+		config            *cluster.Config
+		bundles           *releasev1.Bundles
+		eksdRelease       *eksdv1.Release
+		workerEksdRelease map[string]*eksdv1.Release
+		error             string
 	}{
 		{
 			name: "no VersionsBundle for kube version",
@@ -41,8 +43,9 @@ func TestNewSpecError(t *testing.T) {
 					Number: 2,
 				},
 			},
-			eksdRelease: &eksdv1.Release{},
-			error:       "kubernetes version 1.24 is not supported by bundles manifest 2",
+			eksdRelease:       &eksdv1.Release{},
+			workerEksdRelease: map[string]*eksdv1.Release{},
+			error:             "kubernetes version 1.24 is not supported by bundles manifest 2",
 		},
 		{
 			name: "invalid eks-d release",
@@ -63,15 +66,45 @@ func TestNewSpecError(t *testing.T) {
 					},
 				},
 			},
-			eksdRelease: &eksdv1.Release{},
-			error:       "is no present in eksd release",
+			eksdRelease:       &eksdv1.Release{},
+			workerEksdRelease: map[string]*eksdv1.Release{},
+			error:             "is no present in eksd release",
+		},
+		{
+			name: "invalid worker eks-d release",
+			config: &cluster.Config{
+				Cluster: &anywherev1.Cluster{
+					Spec: anywherev1.ClusterSpec{
+						KubernetesVersion: anywherev1.Kube124,
+						WorkerNodeGroupConfigurations: []anywherev1.WorkerNodeGroupConfiguration{
+							{
+								Name:              "md-0",
+								KubernetesVersion: &kubeVersion,
+							},
+						},
+					},
+				},
+			},
+			bundles: &releasev1.Bundles{
+				Spec: releasev1.BundlesSpec{
+					Number: 2,
+					VersionsBundles: []releasev1.VersionsBundle{
+						{
+							KubeVersion: "1.24",
+						},
+					},
+				},
+			},
+			eksdRelease:       readEksdRelease(t, "testdata/eksd_valid.yaml"),
+			workerEksdRelease: map[string]*eksdv1.Release{"md-0": {}},
+			error:             "is no present in eksd release",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			g := NewWithT(t)
-			g.Expect(cluster.NewSpec(tt.config, tt.bundles, tt.eksdRelease)).Error().To(
+			g.Expect(cluster.NewSpec(tt.config, tt.bundles, tt.eksdRelease, tt.workerEksdRelease)).Error().To(
 				MatchError(ContainSubstring(tt.error)),
 			)
 		})
@@ -105,7 +138,7 @@ func TestNewSpecValid(t *testing.T) {
 	}
 	eksdRelease := readEksdRelease(t, "testdata/eksd_valid.yaml")
 
-	spec, err := cluster.NewSpec(config, bundles, eksdRelease)
+	spec, err := cluster.NewSpec(config, bundles, eksdRelease, make(map[string]*eksdv1.Release))
 	g.Expect(err).NotTo(HaveOccurred())
 	g.Expect(spec.AWSIamConfig).NotTo(BeNil())
 	g.Expect(spec.OIDCConfig).NotTo(BeNil())
@@ -120,7 +153,8 @@ func TestSpecDeepCopy(t *testing.T) {
 	g.Expect(err).To(Succeed())
 	bundles := test.Bundles(t)
 	eksd := test.EksdRelease()
-	spec, err := cluster.NewSpec(config, bundles, eksd)
+	weksd := map[string]*eksdv1.Release{"workers-1": eksd.DeepCopy()}
+	spec, err := cluster.NewSpec(config, bundles, eksd, weksd)
 	g.Expect(err).To(Succeed())
 
 	g.Expect(spec.DeepCopy()).To(Equal(spec))

@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	eksdv1alpha1 "github.com/aws/eks-distro-build-tooling/release/api/v1alpha1"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/assert"
@@ -922,7 +923,7 @@ func TestClusterManagerUpgradeWorkloadClusterAWSIamConfigSuccess(t *testing.T) {
 		},
 	}
 
-	cs, _ := cluster.NewSpec(config, tt.clusterSpec.Bundles, r)
+	cs, _ := cluster.NewSpec(config, tt.clusterSpec.Bundles, r, make(map[string]*eksdv1alpha1.Release))
 
 	tt.clusterSpec = cs
 
@@ -2378,7 +2379,7 @@ func newSpecChangedTest(t *testing.T, opts ...clustermanager.ClusterManagerOpt) 
 		AWSIAMConfigs:         map[string]*v1alpha1.AWSIamConfig{},
 	}
 
-	cs, _ := cluster.NewSpec(config, b, r)
+	cs, _ := cluster.NewSpec(config, b, r, make(map[string]*eksdv1alpha1.Release))
 	changedTest.clusterSpec = cs
 
 	return changedTest

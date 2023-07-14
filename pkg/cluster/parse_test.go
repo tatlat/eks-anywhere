@@ -13,6 +13,7 @@ import (
 )
 
 func TestParseConfig(t *testing.T) {
+	kubeVersion := anywherev1.KubernetesVersion("1.20")
 	tests := []struct {
 		name                         string
 		yamlManifest                 []byte
@@ -400,8 +401,9 @@ func TestParseConfig(t *testing.T) {
 					},
 					WorkerNodeGroupConfigurations: []anywherev1.WorkerNodeGroupConfiguration{
 						{
-							Name:  "workers-1",
-							Count: ptr.Int(1),
+							Name:              "workers-1",
+							KubernetesVersion: &kubeVersion,
+							Count:             ptr.Int(1),
 						},
 					},
 					DatacenterRef: anywherev1.Ref{

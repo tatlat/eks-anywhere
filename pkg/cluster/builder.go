@@ -1,8 +1,10 @@
 package cluster
 
 import (
+	eksdv1 "github.com/aws/eks-distro-build-tooling/release/api/v1alpha1"
 	"github.com/pkg/errors"
 
+	"github.com/aws/eks-anywhere/pkg/api/v1alpha1"
 	"github.com/aws/eks-anywhere/pkg/constants"
 	"github.com/aws/eks-anywhere/pkg/manifests"
 	"github.com/aws/eks-anywhere/pkg/manifests/bundles"
@@ -82,17 +84,37 @@ func (b FileSpecBuilder) Build(clusterConfigURL string) (*Spec, error) {
 	config.Cluster.Spec.BundlesRef.Namespace = bundlesManifest.Namespace
 	config.Cluster.Spec.BundlesRef.APIVersion = releasev1.GroupVersion.String()
 
-	versionsBundle, err := GetVersionsBundle(config.Cluster, bundlesManifest)
+	eksd, err := getEksdReleases(config.Cluster.Spec.KubernetesVersion, bundlesManifest, b.reader)
 	if err != nil {
 		return nil, err
 	}
 
-	eksd, err := bundles.ReadEKSD(b.reader, *versionsBundle)
+	workerEksd := make(map[string]*eksdv1.Release)
+	for _, wng := range config.Cluster.Spec.WorkerNodeGroupConfigurations {
+		if wng.KubernetesVersion != nil {
+			wer, err := getEksdReleases(*wng.KubernetesVersion, bundlesManifest, b.reader)
+			if err != nil {
+				return nil, err
+			}
+			workerEksd[wng.Name] = wer
+		}
+	}
+
+	return NewSpec(config, bundlesManifest, eksd, workerEksd)
+}
+
+func getEksdReleases(version v1alpha1.KubernetesVersion, bundlesManifest *releasev1.Bundles, reader bundles.Reader) (*eksdv1.Release, error) {
+	versionsBundle, err := GetVersionsBundle(version, bundlesManifest)
 	if err != nil {
 		return nil, err
 	}
 
-	return NewSpec(config, bundlesManifest, eksd)
+	eksd, err := bundles.ReadEKSD(reader, *versionsBundle)
+	if err != nil {
+		return nil, err
+	}
+
+	return eksd, nil
 }
 
 func (b FileSpecBuilder) getConfig(clusterConfigURL string) (*Config, error) {

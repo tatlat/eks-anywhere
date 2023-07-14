@@ -19,6 +19,34 @@ type Spec struct {
 	OIDCConfig        *eksav1alpha1.OIDCConfig
 	AWSIamConfig      *eksav1alpha1.AWSIamConfig
 	ManagementCluster *types.Cluster // TODO(g-gaston): cleanup, this doesn't belong here
+	WorkerVersions    map[string]*WorkerVersions
+}
+
+// WorkerVersions holds the VersionsBundle and eksdRelease for node groups that contain a KubernetesVersion.
+type WorkerVersions struct {
+	VersionsBundle *VersionsBundle
+	eksdRelease    *eksdv1alpha1.Release
+}
+
+func (w *WorkerVersions) deepCopy() *WorkerVersions {
+	return &WorkerVersions{
+		VersionsBundle: &VersionsBundle{
+			VersionsBundle: w.VersionsBundle.VersionsBundle.DeepCopy(),
+			KubeDistro:     w.VersionsBundle.KubeDistro.deepCopy(),
+		},
+		eksdRelease: w.eksdRelease.DeepCopy(),
+	}
+}
+
+func deepCopyWorkerVersions(workerVersions map[string]*WorkerVersions) map[string]*WorkerVersions {
+	if workerVersions == nil {
+		return nil
+	}
+	retVal := map[string]*WorkerVersions{}
+	for key, wv := range workerVersions {
+		retVal[key] = wv.deepCopy()
+	}
+	return retVal
 }
 
 func (s *Spec) DeepCopy() *Spec {
@@ -30,8 +58,9 @@ func (s *Spec) DeepCopy() *Spec {
 			VersionsBundle: s.VersionsBundle.VersionsBundle.DeepCopy(),
 			KubeDistro:     s.VersionsBundle.KubeDistro.deepCopy(),
 		},
-		eksdRelease: s.eksdRelease.DeepCopy(),
-		Bundles:     s.Bundles.DeepCopy(),
+		eksdRelease:    s.eksdRelease.DeepCopy(),
+		Bundles:        s.Bundles.DeepCopy(),
+		WorkerVersions: deepCopyWorkerVersions(s.WorkerVersions),
 	}
 }
 
@@ -75,26 +104,31 @@ type VersionedRepository struct {
 }
 
 // NewSpec builds a new [Spec].
-func NewSpec(config *Config, bundles *v1alpha1.Bundles, eksdRelease *eksdv1alpha1.Release) (*Spec, error) {
+func NewSpec(config *Config, bundles *v1alpha1.Bundles, eksdRelease *eksdv1alpha1.Release, workerEksdReleases map[string]*eksdv1alpha1.Release) (*Spec, error) {
 	s := &Spec{}
 
-	versionsBundle, err := GetVersionsBundle(config.Cluster, bundles)
+	versionsBundle, err := constructVersionsBundles(config.Cluster.Spec.KubernetesVersion, bundles, eksdRelease)
 	if err != nil {
 		return nil, err
 	}
 
-	kubeDistro, err := buildKubeDistro(eksdRelease)
-	if err != nil {
-		return nil, err
+	workerVersions := map[string]*WorkerVersions{}
+	for _, wng := range config.Cluster.Spec.WorkerNodeGroupConfigurations {
+		if weksd, ok := workerEksdReleases[wng.Name]; ok && wng.KubernetesVersion != nil {
+			vb, err := constructVersionsBundles(*wng.KubernetesVersion, bundles, weksd)
+			if err != nil {
+				return nil, err
+			}
+			wv := &WorkerVersions{VersionsBundle: vb, eksdRelease: weksd}
+			workerVersions[wng.Name] = wv
+		}
 	}
 
 	s.Bundles = bundles
 	s.Config = config
-	s.VersionsBundle = &VersionsBundle{
-		VersionsBundle: versionsBundle,
-		KubeDistro:     kubeDistro,
-	}
+	s.VersionsBundle = versionsBundle
 	s.eksdRelease = eksdRelease
+	s.WorkerVersions = workerVersions
 
 	// Get first aws iam config if it exists
 	// Config supports multiple configs because Cluster references a slice
@@ -111,6 +145,23 @@ func NewSpec(config *Config, bundles *v1alpha1.Bundles, eksdRelease *eksdv1alpha
 	}
 
 	return s, nil
+}
+
+func constructVersionsBundles(version eksav1alpha1.KubernetesVersion, bundles *v1alpha1.Bundles, eksd *eksdv1alpha1.Release) (*VersionsBundle, error) {
+	vb, err := GetVersionsBundle(version, bundles)
+	if err != nil {
+		return nil, err
+	}
+
+	kubeDistro, err := buildKubeDistro(eksd)
+	if err != nil {
+		return nil, err
+	}
+
+	return &VersionsBundle{
+		VersionsBundle: vb,
+		KubeDistro:     kubeDistro,
+	}, nil
 }
 
 func (s *Spec) KubeDistroImages() []v1alpha1.Image {
