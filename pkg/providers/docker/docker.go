@@ -309,8 +309,10 @@ func buildTemplateMapCP(clusterSpec *cluster.Spec) (map[string]interface{}, erro
 
 func buildTemplateMapMD(clusterSpec *cluster.Spec, workerNodeGroupConfiguration v1alpha1.WorkerNodeGroupConfiguration) (map[string]interface{}, error) {
 	bundle, err := clusterSpec.GetCPVersionsBundle()
+	kubeVersion := clusterSpec.Cluster.Spec.KubernetesVersion
 	if workerNodeGroupConfiguration.KubernetesVersion != nil {
 		bundle, err = clusterSpec.GetVersionBundles(*workerNodeGroupConfiguration.KubernetesVersion)
+		kubeVersion = *workerNodeGroupConfiguration.KubernetesVersion
 	}
 	if err != nil {
 		return nil, err
@@ -319,7 +321,7 @@ func buildTemplateMapMD(clusterSpec *cluster.Spec, workerNodeGroupConfiguration 
 		Append(clusterapi.WorkerNodeLabelsExtraArgs(workerNodeGroupConfiguration)).
 		Append(clusterapi.ResolvConfExtraArgs(clusterSpec.Cluster.Spec.ClusterNetwork.DNS.ResolvConf))
 
-	cgroupDriverArgs, err := kubeletCgroupDriverExtraArgs(clusterSpec.Cluster.Spec.KubernetesVersion)
+	cgroupDriverArgs, err := kubeletCgroupDriverExtraArgs(kubeVersion)
 	if err != nil {
 		return nil, err
 	}
