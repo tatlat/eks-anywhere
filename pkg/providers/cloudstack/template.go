@@ -315,6 +315,9 @@ func fillProxyConfigurations(values map[string]interface{}, clusterSpec *cluster
 
 func buildTemplateMapMD(clusterSpec *cluster.Spec, workerNodeGroupConfiguration v1alpha1.WorkerNodeGroupConfiguration) (map[string]interface{}, error) {
 	bundle, err := clusterSpec.GetCPVersionsBundle()
+	if workerNodeGroupConfiguration.KubernetesVersion != nil {
+		bundle, err = clusterSpec.GetVersionBundles(*workerNodeGroupConfiguration.KubernetesVersion)
+	}
 	if err != nil {
 		return nil, err
 	}

@@ -14,6 +14,7 @@ import (
 	anywherev1 "github.com/aws/eks-anywhere/pkg/api/v1alpha1"
 	"github.com/aws/eks-anywhere/pkg/cluster"
 	"github.com/aws/eks-anywhere/pkg/cluster/mocks"
+	"github.com/aws/eks-anywhere/pkg/utils/ptr"
 	releasev1 "github.com/aws/eks-anywhere/release/api/v1alpha1"
 )
 
@@ -29,6 +30,7 @@ type buildSpecTest struct {
 }
 
 func newBuildSpecTest(t *testing.T) *buildSpecTest {
+	kube122 := anywherev1.KubernetesVersion("1.22")
 	ctrl := gomock.NewController(t)
 	client := mocks.NewMockClient(ctrl)
 	cluster := &anywherev1.Cluster{
@@ -38,6 +40,13 @@ func newBuildSpecTest(t *testing.T) *buildSpecTest {
 				Namespace: "my-namespace",
 			},
 			KubernetesVersion: anywherev1.Kube123,
+			WorkerNodeGroupConfigurations: []anywherev1.WorkerNodeGroupConfiguration{
+				{
+					Name:              "md-0",
+					KubernetesVersion: &kube122,
+					Count:             ptr.Int(1),
+				},
+			},
 		},
 	}
 	bundles := &releasev1.Bundles{
@@ -50,6 +59,12 @@ func newBuildSpecTest(t *testing.T) *buildSpecTest {
 					KubeVersion: "1.23",
 					EksD: releasev1.EksDRelease{
 						Name: "eksd-123",
+					},
+				},
+				{
+					KubeVersion: "1.22",
+					EksD: releasev1.EksDRelease{
+						Name: "eksd-122",
 					},
 				},
 			},
@@ -89,6 +104,14 @@ func (tt *buildSpecTest) expectGetEksd() {
 			return nil
 		},
 	)
+	tt.client.EXPECT().Get(tt.ctx, "eksd-122", "eksa-system", &eksdv1.Release{}).DoAndReturn(
+		func(ctx context.Context, name, namespace string, obj runtime.Object) error {
+			o := obj.(*eksdv1.Release)
+			o.ObjectMeta = tt.eksdRelease.ObjectMeta
+			o.Status = tt.eksdRelease.Status
+			return nil
+		},
+	)
 }
 
 func TestBuildSpec(t *testing.T) {
@@ -106,6 +129,10 @@ func TestBuildSpec(t *testing.T) {
 		VersionsBundles: map[anywherev1.KubernetesVersion]*cluster.VersionsBundle{
 			anywherev1.Kube123: {
 				VersionsBundle: &tt.bundles.Spec.VersionsBundles[0],
+				KubeDistro:     tt.kubeDistro,
+			},
+			anywherev1.Kube122: {
+				VersionsBundle: &tt.bundles.Spec.VersionsBundles[1],
 				KubeDistro:     tt.kubeDistro,
 			},
 		},
@@ -139,6 +166,33 @@ func TestBuildSpecBuildConfigError(t *testing.T) {
 
 	_, err := cluster.BuildSpec(tt.ctx, tt.client, tt.cluster)
 	tt.Expect(err).To(MatchError(ContainSubstring("client error")))
+}
+
+func TestBuildSpecBuildConfigErrorEksd(t *testing.T) {
+	tt := newBuildSpecTest(t)
+	tt.expectGetBundles()
+	tt.cluster.Spec.KubernetesVersion = "1.18"
+
+	_, err := cluster.BuildSpec(tt.ctx, tt.client, tt.cluster)
+	tt.Expect(err).To(MatchError(ContainSubstring("kubernetes version 1.18 is not supported by bundles manifest")))
+}
+
+func TestBuildSpecBuildConfigErrorEksdWorkerNodes(t *testing.T) {
+	tt := newBuildSpecTest(t)
+	kube118 := anywherev1.KubernetesVersion("1.18")
+	tt.cluster.Spec.WorkerNodeGroupConfigurations[0].KubernetesVersion = &kube118
+	tt.expectGetBundles()
+	tt.client.EXPECT().Get(tt.ctx, "eksd-123", "eksa-system", &eksdv1.Release{}).DoAndReturn(
+		func(ctx context.Context, name, namespace string, obj runtime.Object) error {
+			o := obj.(*eksdv1.Release)
+			o.ObjectMeta = tt.eksdRelease.ObjectMeta
+			o.Status = tt.eksdRelease.Status
+			return nil
+		},
+	)
+
+	_, err := cluster.BuildSpec(tt.ctx, tt.client, tt.cluster)
+	tt.Expect(err).To(MatchError(ContainSubstring("kubernetes version 1.18 is not supported by bundles manifest")))
 }
 
 func TestBuildSpecUnsupportedKubernetesVersionError(t *testing.T) {

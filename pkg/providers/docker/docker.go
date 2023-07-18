@@ -309,6 +309,9 @@ func buildTemplateMapCP(clusterSpec *cluster.Spec) (map[string]interface{}, erro
 
 func buildTemplateMapMD(clusterSpec *cluster.Spec, workerNodeGroupConfiguration v1alpha1.WorkerNodeGroupConfiguration) (map[string]interface{}, error) {
 	bundle, err := clusterSpec.GetCPVersionsBundle()
+	if workerNodeGroupConfiguration.KubernetesVersion != nil {
+		bundle, err = clusterSpec.GetVersionBundles(*workerNodeGroupConfiguration.KubernetesVersion)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -593,11 +596,7 @@ func (p *provider) ValidateNewSpec(_ context.Context, _ *types.Cluster, _ *clust
 }
 
 func (p *provider) ChangeDiff(currentSpec, newSpec *cluster.Spec) *types.ComponentChangeDiff {
-	cvb, err := currentSpec.GetCPVersionsBundle()
-	if err != nil {
-		return nil
-	}
-	nvb, err := newSpec.GetCPVersionsBundle()
+	cvb, nvb, err := cluster.GetOldAndNewCPVersionBundle(currentSpec, newSpec)
 	if err != nil {
 		return nil
 	}

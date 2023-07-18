@@ -146,8 +146,12 @@ func KubeadmConfigTemplate(log logr.Logger, clusterSpec *cluster.Spec, workerNod
 	return kct, nil
 }
 
-func machineDeployment(clusterSpec *cluster.Spec, workerNodeGroupConfig v1alpha1.WorkerNodeGroupConfiguration, kubeadmConfigTemplate *bootstrapv1.KubeadmConfigTemplate, snowMachineTemplate *snowv1.AWSSnowMachineTemplate) *clusterv1.MachineDeployment {
-	return clusterapi.MachineDeployment(clusterSpec, workerNodeGroupConfig, kubeadmConfigTemplate, snowMachineTemplate)
+func machineDeployment(clusterSpec *cluster.Spec, workerNodeGroupConfig v1alpha1.WorkerNodeGroupConfiguration, kubeadmConfigTemplate *bootstrapv1.KubeadmConfigTemplate, snowMachineTemplate *snowv1.AWSSnowMachineTemplate) (*clusterv1.MachineDeployment, error) {
+	md, err := clusterapi.MachineDeployment(clusterSpec, workerNodeGroupConfig, kubeadmConfigTemplate, snowMachineTemplate)
+	if err != nil {
+		return nil, err
+	}
+	return md, nil
 }
 
 // EtcdadmCluster builds an etcdadmCluster based on an eks-a cluster spec and snowMachineTemplate.

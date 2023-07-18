@@ -689,8 +689,8 @@ func (c *ClusterManager) UpgradeCluster(ctx context.Context, managementCluster, 
 	return nil
 }
 
-func (c *ClusterManager) EKSAClusterSpecChanged(ctx context.Context, cluster *types.Cluster, newClusterSpec *cluster.Spec) (bool, error) {
-	cc, err := c.clusterClient.GetEksaCluster(ctx, cluster, newClusterSpec.Cluster.Name)
+func (c *ClusterManager) EKSAClusterSpecChanged(ctx context.Context, clus *types.Cluster, newClusterSpec *cluster.Spec) (bool, error) {
+	cc, err := c.clusterClient.GetEksaCluster(ctx, clus, newClusterSpec.Cluster.Name)
 	if err != nil {
 		return false, err
 	}
@@ -700,16 +700,12 @@ func (c *ClusterManager) EKSAClusterSpecChanged(ctx context.Context, cluster *ty
 		return true, nil
 	}
 
-	currentClusterSpec, err := c.buildSpecForCluster(ctx, cluster, cc)
+	currentClusterSpec, err := c.buildSpecForCluster(ctx, clus, cc)
 	if err != nil {
 		return false, err
 	}
 
-	cvb, err := currentClusterSpec.GetCPVersionsBundle()
-	if err != nil {
-		return false, err
-	}
-	nvb, err := newClusterSpec.GetCPVersionsBundle()
+	cvb, nvb, err := cluster.GetOldAndNewCPVersionBundle(currentClusterSpec, newClusterSpec)
 	if err != nil {
 		return false, err
 	}

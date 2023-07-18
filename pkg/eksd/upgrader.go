@@ -38,11 +38,7 @@ func (u *Upgrader) Upgrade(ctx context.Context, cluster *types.Cluster, currentS
 }
 
 func EksdChangeDiff(currentSpec, newSpec *cluster.Spec) *types.ChangeDiff {
-	cvb, err := currentSpec.GetCPVersionsBundle()
-	if err != nil {
-		return nil
-	}
-	nvb, err := newSpec.GetCPVersionsBundle()
+	cvb, nvb, err := cluster.GetOldAndNewCPVersionBundle(currentSpec, newSpec)
 	if err != nil {
 		return nil
 	}

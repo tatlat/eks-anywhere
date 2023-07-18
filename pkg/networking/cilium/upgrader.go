@@ -146,11 +146,7 @@ func (u *Upgrader) waitForCilium(ctx context.Context, cluster *types.Cluster) er
 }
 
 func ciliumChangeDiff(currentSpec, newSpec *cluster.Spec) *types.ChangeDiff {
-	cvb, err := currentSpec.GetCPVersionsBundle()
-	if err != nil {
-		return nil
-	}
-	nvb, err := newSpec.GetCPVersionsBundle()
+	cvb, nvb, err := cluster.GetOldAndNewCPVersionBundle(currentSpec, newSpec)
 	if err != nil {
 		return nil
 	}

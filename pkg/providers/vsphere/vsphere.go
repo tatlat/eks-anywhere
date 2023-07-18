@@ -1065,11 +1065,7 @@ func (p *vsphereProvider) secretContentsChanged(ctx context.Context, workloadClu
 }
 
 func (p *vsphereProvider) ChangeDiff(currentSpec, newSpec *cluster.Spec) *types.ComponentChangeDiff {
-	cvb, err := currentSpec.GetCPVersionsBundle()
-	if err != nil {
-		return nil
-	}
-	nvb, err := newSpec.GetCPVersionsBundle()
+	cvb, nvb, err := cluster.GetOldAndNewCPVersionBundle(currentSpec, newSpec)
 	if err != nil {
 		return nil
 	}
@@ -1092,12 +1088,8 @@ func cpiResourceSetName(clusterSpec *cluster.Spec) string {
 	return fmt.Sprintf("%s-cpi", clusterSpec.Cluster.Name)
 }
 
-func (p *vsphereProvider) UpgradeNeeded(ctx context.Context, newSpec, currentSpec *cluster.Spec, cluster *types.Cluster) (bool, error) {
-	cvb, err := currentSpec.GetCPVersionsBundle()
-	if err != nil {
-		return false, err
-	}
-	nvb, err := newSpec.GetCPVersionsBundle()
+func (p *vsphereProvider) UpgradeNeeded(ctx context.Context, newSpec, currentSpec *cluster.Spec, c *types.Cluster) (bool, error) {
+	cvb, nvb, err := cluster.GetOldAndNewCPVersionBundle(currentSpec, newSpec)
 	if err != nil {
 		return false, err
 	}
@@ -1108,7 +1100,7 @@ func (p *vsphereProvider) UpgradeNeeded(ctx context.Context, newSpec, currentSpe
 		return true, nil
 	}
 	cc := currentSpec.Cluster
-	existingVdc, err := p.providerKubectlClient.GetEksaVSphereDatacenterConfig(ctx, cc.Spec.DatacenterRef.Name, cluster.KubeconfigFile, newSpec.Cluster.Namespace)
+	existingVdc, err := p.providerKubectlClient.GetEksaVSphereDatacenterConfig(ctx, cc.Spec.DatacenterRef.Name, c.KubeconfigFile, newSpec.Cluster.Namespace)
 	if err != nil {
 		return false, err
 	}
@@ -1117,7 +1109,7 @@ func (p *vsphereProvider) UpgradeNeeded(ctx context.Context, newSpec, currentSpe
 		return true, nil
 	}
 
-	machineConfigsSpecChanged, err := p.machineConfigsSpecChanged(ctx, cc, cluster, newSpec)
+	machineConfigsSpecChanged, err := p.machineConfigsSpecChanged(ctx, cc, c, newSpec)
 	if err != nil {
 		return false, err
 	}

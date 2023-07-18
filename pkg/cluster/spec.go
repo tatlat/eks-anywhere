@@ -38,10 +38,6 @@ type VersionsBundle struct {
 }
 
 func deepCopyVersionsBundles(v map[eksav1alpha1.KubernetesVersion]*VersionsBundle) map[eksav1alpha1.KubernetesVersion]*VersionsBundle {
-	if v == nil {
-		return nil
-	}
-
 	m := make(map[eksav1alpha1.KubernetesVersion]*VersionsBundle)
 	for key, val := range v {
 		m[key] = &VersionsBundle{
@@ -118,11 +114,11 @@ func NewSpec(config *Config, bundles *v1alpha1.Bundles, eksdReleases map[eksav1a
 
 func (s *Spec) KubeDistroImages() []v1alpha1.Image {
 	images := []v1alpha1.Image{}
-	vb, err := GetVersionsBundle(s.Cluster.Spec.KubernetesVersion, s.Bundles)
+	vb, err := s.GetCPVersionsBundle()
 	if err != nil || vb == nil {
 		return images
 	}
-	eksdRelease, err := bundles.ReadEKSD(files.NewReader(), *vb)
+	eksdRelease, err := bundles.ReadEKSD(files.NewReader(), *vb.VersionsBundle)
 	if err != nil || eksdRelease == nil {
 		return images
 	}
@@ -197,6 +193,19 @@ func (s *Spec) GetVersionBundles(version eksav1alpha1.KubernetesVersion) (*Versi
 // GetCPVersionsBundle returns a VersionsBundle for the top level kubernetes version.
 func (s *Spec) GetCPVersionsBundle() (*VersionsBundle, error) {
 	return s.GetVersionBundles(s.Cluster.Spec.KubernetesVersion)
+}
+
+// GetOldAndNewCPVersionBundle returns the top level kubernetes version's VersionsBundle for the old and new specs.
+func GetOldAndNewCPVersionBundle(old, new *Spec) (*VersionsBundle, *VersionsBundle, error) {
+	ovb, err := old.GetCPVersionsBundle()
+	if err != nil {
+		return nil, nil, err
+	}
+	nvb, err := new.GetCPVersionsBundle()
+	if err != nil {
+		return nil, nil, err
+	}
+	return ovb, nvb, nil
 }
 
 func buildKubeDistro(eksd *eksdv1alpha1.Release) (*KubeDistro, error) {

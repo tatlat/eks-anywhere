@@ -301,11 +301,7 @@ func (p *Provider) MachineConfigs(_ *cluster.Spec) []providers.MachineConfig {
 }
 
 func (p *Provider) ChangeDiff(currentSpec, newSpec *cluster.Spec) *types.ComponentChangeDiff {
-	cvb, err := currentSpec.GetCPVersionsBundle()
-	if err != nil {
-		return nil
-	}
-	nvb, err := newSpec.GetCPVersionsBundle()
+	cvb, nvb, err := cluster.GetOldAndNewCPVersionBundle(currentSpec, newSpec)
 	if err != nil {
 		return nil
 	}

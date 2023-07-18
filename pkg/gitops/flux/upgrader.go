@@ -53,11 +53,7 @@ func FluxChangeDiff(currentSpec, newSpec *cluster.Spec) *types.ChangeDiff {
 		logger.V(1).Info("Skipping Flux upgrades, GitOps not enabled")
 		return nil
 	}
-	ovb, err := currentSpec.GetCPVersionsBundle()
-	if err != nil {
-		return nil
-	}
-	nvb, err := newSpec.GetCPVersionsBundle()
+	ovb, nvb, err := cluster.GetOldAndNewCPVersionBundle(currentSpec, newSpec)
 	if err != nil {
 		return nil
 	}

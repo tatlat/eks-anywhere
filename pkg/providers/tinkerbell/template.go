@@ -488,6 +488,9 @@ func buildTemplateMapMD(
 	datacenterSpec v1alpha1.TinkerbellDatacenterConfigSpec,
 ) (map[string]interface{}, error) {
 	bundle, err := clusterSpec.GetCPVersionsBundle()
+	if workerNodeGroupConfiguration.KubernetesVersion != nil {
+		bundle, err = clusterSpec.GetVersionBundles(*workerNodeGroupConfiguration.KubernetesVersion)
+	}
 	if err != nil {
 		return nil, err
 	}

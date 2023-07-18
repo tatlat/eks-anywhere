@@ -75,11 +75,7 @@ func capiChangeDiff(currentSpec, newSpec *cluster.Spec, provider providers.Provi
 	changeDiff := &CAPIChangeDiff{}
 	componentChanged := false
 
-	cvb, err := currentSpec.GetCPVersionsBundle()
-	if err != nil {
-		return nil
-	}
-	nvb, err := newSpec.GetCPVersionsBundle()
+	cvb, nvb, err := cluster.GetOldAndNewCPVersionBundle(currentSpec, newSpec)
 	if err != nil {
 		return nil
 	}

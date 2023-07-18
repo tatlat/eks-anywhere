@@ -259,11 +259,7 @@ func (p *SnowProvider) ValidateNewSpec(ctx context.Context, cluster *types.Clust
 }
 
 func (p *SnowProvider) ChangeDiff(currentSpec, newSpec *cluster.Spec) *types.ComponentChangeDiff {
-	cvb, err := currentSpec.GetCPVersionsBundle()
-	if err != nil {
-		return nil
-	}
-	nvb, err := newSpec.GetCPVersionsBundle()
+	cvb, nvb, err := cluster.GetOldAndNewCPVersionBundle(currentSpec, newSpec)
 	if err != nil {
 		return nil
 	}
@@ -347,12 +343,8 @@ func (p *SnowProvider) validateUpgradeRolloutStrategy(clusterSpec *cluster.Spec)
 // UpgradeNeeded compares the new snow version bundle and objects with the existing ones in the cluster and decides whether
 // to trigger a cluster upgrade or not.
 // TODO: revert the change once cluster.BuildSpec is used in cluster_manager to replace the deprecated cluster.BuildSpecForCluster
-func (p *SnowProvider) UpgradeNeeded(ctx context.Context, newSpec, oldSpec *cluster.Spec, cluster *types.Cluster) (bool, error) {
-	ovb, err := oldSpec.GetCPVersionsBundle()
-	if err != nil {
-		return false, err
-	}
-	nvb, err := newSpec.GetCPVersionsBundle()
+func (p *SnowProvider) UpgradeNeeded(ctx context.Context, newSpec, oldSpec *cluster.Spec, c *types.Cluster) (bool, error) {
+	ovb, nvb, err := cluster.GetOldAndNewCPVersionBundle(oldSpec, newSpec)
 	if err != nil {
 		return false, err
 	}
@@ -360,7 +352,7 @@ func (p *SnowProvider) UpgradeNeeded(ctx context.Context, newSpec, oldSpec *clus
 		return true, nil
 	}
 
-	datacenterChanged, err := p.datacenterChanged(ctx, cluster, newSpec)
+	datacenterChanged, err := p.datacenterChanged(ctx, c, newSpec)
 	if err != nil {
 		return false, err
 	}
@@ -368,7 +360,7 @@ func (p *SnowProvider) UpgradeNeeded(ctx context.Context, newSpec, oldSpec *clus
 		return true, nil
 	}
 
-	return p.machineConfigsChanged(ctx, cluster, newSpec)
+	return p.machineConfigsChanged(ctx, c, newSpec)
 }
 
 func (p *SnowProvider) DeleteResources(ctx context.Context, clusterSpec *cluster.Spec) error {

@@ -180,7 +180,8 @@ func TestBasicCloudStackMachineDeployment(t *testing.T) {
 			},
 		},
 	}
-	got := cloudstack.MachineDeployments(spec, kubeadmConfigTemplates, matchineTemplates)
+	got, err := cloudstack.MachineDeployments(spec, kubeadmConfigTemplates, matchineTemplates)
+	tt.Expect(err).To(BeNil())
 	tt.Expect(len(got)).To(Equal(*workerNodeGroupConfig.Count))
 	tt.Expect(int(*got[workerNodeGroupConfig.Name].Spec.Replicas)).To(Equal(*workerNodeGroupConfig.Count))
 	tt.Expect(got[workerNodeGroupConfig.Name].Spec.Template.Spec.InfrastructureRef.Name).To(Equal(fullMatchineTemplate.Name))
