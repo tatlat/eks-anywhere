@@ -10,7 +10,6 @@ import (
 	"github.com/aws/eks-anywhere/pkg/manifests/bundles"
 	"github.com/aws/eks-anywhere/pkg/version"
 	releasev1 "github.com/aws/eks-anywhere/release/api/v1alpha1"
-	eksdv1 "github.com/aws/eks-distro-build-tooling/release/api/v1alpha1"
 )
 
 // FileSpecBuilder allows to build [Spec] by reading from files.

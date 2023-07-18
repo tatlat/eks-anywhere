@@ -495,10 +495,6 @@ func buildTemplateMapMD(
 		return nil, err
 	}
 	format := "cloud-config"
-	wv, ok := clusterSpec.WorkerVersions[workerNodeGroupConfiguration.Name]
-	if workerNodeGroupConfiguration.KubernetesVersion != nil && ok {
-		bundle = wv.VersionsBundle
-	}
 
 	kubeletExtraArgs := clusterapi.SecureTlsCipherSuitesExtraArgs().
 		Append(clusterapi.WorkerNodeLabelsExtraArgs(workerNodeGroupConfiguration)).
