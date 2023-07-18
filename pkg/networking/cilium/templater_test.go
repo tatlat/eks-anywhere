@@ -415,7 +415,6 @@ func TestTemplaterGenerateNetworkPolicy(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			temp := newtemplaterTest(t)
-			//temp.spec.VersionsBundle.KubeDistro.Kubernetes.Tag = tt.k8sVersion
 			if !tt.selfManaged {
 				temp.spec.Cluster.Spec.ManagementCluster.Name = "managed"
 			}

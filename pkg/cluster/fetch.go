@@ -26,7 +26,7 @@ func bundlesNamespacedKey(cluster *v1alpha1.Cluster) (name, namespace string) {
 	return name, namespace
 }
 
-// GetVersionBundle gets the VersionsBundle that corresponds to KubernetesVersion.
+// GetVersionsBundle gets the VersionsBundle that corresponds to KubernetesVersion.
 func GetVersionsBundle(version v1alpha1.KubernetesVersion, bundles *v1alpha1release.Bundles) (*v1alpha1release.VersionsBundle, error) {
 	return getVersionsBundleForKubernetesVersion(version, bundles)
 }

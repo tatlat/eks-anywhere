@@ -501,6 +501,7 @@ func (p *Provider) GenerateStorageClass() []byte {
 	return nil
 }
 
+// GenerateMHC generates MHC.
 func (p *Provider) GenerateMHC(_ *cluster.Spec) ([]byte, error) {
 	data := map[string]string{
 		"clusterName":         p.clusterConfig.Name,
@@ -568,6 +569,7 @@ func (p *Provider) DatacenterConfig(_ *cluster.Spec) providers.DatacenterConfig 
 	return p.datacenterConfig
 }
 
+// MachineConfigs returns a MachineConfig slice.
 func (p *Provider) MachineConfigs(_ *cluster.Spec) []providers.MachineConfig {
 	configs := make(map[string]providers.MachineConfig, len(p.machineConfigs))
 	controlPlaneMachineName := p.clusterConfig.Spec.ControlPlaneConfiguration.MachineGroupRef.Name

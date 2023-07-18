@@ -42,7 +42,7 @@ func TestNewSpecError(t *testing.T) {
 				},
 			},
 			eksdRelease: map[anywherev1.KubernetesVersion]*eksdv1.Release{
-				anywherev1.Kube119: &eksdv1.Release{},
+				anywherev1.Kube119: {},
 			},
 			error: "kubernetes version 1.24 is not supported by bundles manifest 2",
 		},

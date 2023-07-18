@@ -29,6 +29,7 @@ func Namespace(name string) *corev1.Namespace {
 	}
 }
 
+// EksdReleasesMap returns a test release map for unit testing.
 func EksdReleasesMap() map[anywherev1.KubernetesVersion]*eksdv1.Release {
 	return map[anywherev1.KubernetesVersion]*eksdv1.Release{
 		anywherev1.Kube118: EksdRelease(),
@@ -41,6 +42,7 @@ func EksdReleasesMap() map[anywherev1.KubernetesVersion]*eksdv1.Release {
 	}
 }
 
+// VersionsBundlesMap returns a test VersionsBundle map for unit testing.
 func VersionsBundlesMap() map[anywherev1.KubernetesVersion]*cluster.VersionsBundle {
 	return map[anywherev1.KubernetesVersion]*cluster.VersionsBundle{
 		anywherev1.Kube118: VersionBundle(),
@@ -53,6 +55,7 @@ func VersionsBundlesMap() map[anywherev1.KubernetesVersion]*cluster.VersionsBund
 	}
 }
 
+// VersionBundle returns a test VersionsBundle struct for unit testing.
 func VersionBundle() *cluster.VersionsBundle {
 	return &cluster.VersionsBundle{
 		VersionsBundle: &releasev1.VersionsBundle{

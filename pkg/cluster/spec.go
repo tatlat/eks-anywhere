@@ -93,7 +93,7 @@ func NewSpec(config *Config, bundles *v1alpha1.Bundles, eksdReleases map[eksav1a
 	s.Bundles = bundles
 	s.Config = config
 
-	vb, err := GetAllVersionsBundles(s.Cluster, bundles, eksdReleases)
+	vb, err := getAllVersionsBundles(s.Cluster, bundles, eksdReleases)
 	if err != nil {
 		return nil, err
 	}
@@ -136,10 +136,10 @@ func (s *Spec) KubeDistroImages() []v1alpha1.Image {
 	return images
 }
 
-func GetAllVersionsBundles(cluster *eksav1alpha1.Cluster, bundles *v1alpha1.Bundles, eksdReleases map[eksav1alpha1.KubernetesVersion]*eksdv1alpha1.Release) (map[eksav1alpha1.KubernetesVersion]*VersionsBundle, error) {
+func getAllVersionsBundles(cluster *eksav1alpha1.Cluster, bundles *v1alpha1.Bundles, eksdReleases map[eksav1alpha1.KubernetesVersion]*eksdv1alpha1.Release) (map[eksav1alpha1.KubernetesVersion]*VersionsBundle, error) {
 	m := make(map[eksav1alpha1.KubernetesVersion]*VersionsBundle)
 	version := cluster.Spec.KubernetesVersion
-	vb, err := GetVersionBundles(version, bundles, eksdReleases)
+	vb, err := getVersionBundles(version, bundles, eksdReleases)
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +150,7 @@ func GetAllVersionsBundles(cluster *eksav1alpha1.Cluster, bundles *v1alpha1.Bund
 			if _, ok := m[version]; ok {
 				continue
 			}
-			vb, err = GetVersionBundles(version, bundles, eksdReleases)
+			vb, err = getVersionBundles(version, bundles, eksdReleases)
 			if err != nil {
 				return nil, err
 			}
@@ -160,7 +160,7 @@ func GetAllVersionsBundles(cluster *eksav1alpha1.Cluster, bundles *v1alpha1.Bund
 	return m, nil
 }
 
-func GetVersionBundles(version eksav1alpha1.KubernetesVersion, b *v1alpha1.Bundles, eksdReleases map[eksav1alpha1.KubernetesVersion]*eksdv1alpha1.Release) (*VersionsBundle, error) {
+func getVersionBundles(version eksav1alpha1.KubernetesVersion, b *v1alpha1.Bundles, eksdReleases map[eksav1alpha1.KubernetesVersion]*eksdv1alpha1.Release) (*VersionsBundle, error) {
 	v, err := GetVersionsBundle(version, b)
 	if err != nil {
 		return nil, err
@@ -184,6 +184,7 @@ func GetVersionBundles(version eksav1alpha1.KubernetesVersion, b *v1alpha1.Bundl
 	return vb, nil
 }
 
+// GetVersionBundles returns a VersionsBundle if it exists in the VersionsBundles map.
 func (s *Spec) GetVersionBundles(version eksav1alpha1.KubernetesVersion) (*VersionsBundle, error) {
 	vb, ok := s.VersionsBundles[version]
 	if !ok {
@@ -193,6 +194,7 @@ func (s *Spec) GetVersionBundles(version eksav1alpha1.KubernetesVersion) (*Versi
 	return vb, nil
 }
 
+// GetVersionBundles returns a VersionsBundle for the top level kubernetes version.
 func (s *Spec) GetCPVersionsBundle() (*VersionsBundle, error) {
 	return s.GetVersionBundles(s.Cluster.Spec.KubernetesVersion)
 }
