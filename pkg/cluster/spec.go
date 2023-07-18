@@ -194,7 +194,7 @@ func (s *Spec) GetVersionBundles(version eksav1alpha1.KubernetesVersion) (*Versi
 	return vb, nil
 }
 
-// GetVersionBundles returns a VersionsBundle for the top level kubernetes version.
+// GetCPVersionsBundle returns a VersionsBundle for the top level kubernetes version.
 func (s *Spec) GetCPVersionsBundle() (*VersionsBundle, error) {
 	return s.GetVersionBundles(s.Cluster.Spec.KubernetesVersion)
 }

@@ -520,6 +520,7 @@ func (p *Provider) UpdateKubeConfig(content *[]byte, clusterName string) error {
 	return nil
 }
 
+// Version returns the nutanix version from the VersionsBundle.
 func (p *Provider) Version(clusterSpec *cluster.Spec) string {
 	vb, err := clusterSpec.GetCPVersionsBundle()
 	if err != nil {
