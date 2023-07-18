@@ -689,6 +689,7 @@ func (c *ClusterManager) UpgradeCluster(ctx context.Context, managementCluster, 
 	return nil
 }
 
+// EKSAClusterSpecChanged checks if a cluster's new Spec is different from the current Spec.
 func (c *ClusterManager) EKSAClusterSpecChanged(ctx context.Context, clus *types.Cluster, newClusterSpec *cluster.Spec) (bool, error) {
 	cc, err := c.clusterClient.GetEksaCluster(ctx, clus, newClusterSpec.Cluster.Name)
 	if err != nil {
