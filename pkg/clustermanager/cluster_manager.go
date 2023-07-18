@@ -705,6 +705,18 @@ func (c *ClusterManager) EKSAClusterSpecChanged(ctx context.Context, clus *types
 		return false, err
 	}
 
+	changed, err := compareEKSAClusterSpec(ctx, currentClusterSpec, newClusterSpec)
+	if err != nil {
+		return false, err
+	}
+
+	if !changed {
+		logger.V(3).Info("Clusters are the same")
+	}
+	return false, nil
+}
+
+func compareEKSAClusterSpec(ctx context.Context, currentClusterSpec, newClusterSpec *cluster.Spec) (bool, error) {
 	cvb, nvb, err := cluster.GetOldAndNewCPVersionBundle(currentClusterSpec, newClusterSpec)
 	if err != nil {
 		return false, err
@@ -730,7 +742,6 @@ func (c *ClusterManager) EKSAClusterSpecChanged(ctx context.Context, clus *types
 		}
 	}
 
-	logger.V(3).Info("Clusters are the same")
 	return false, nil
 }
 

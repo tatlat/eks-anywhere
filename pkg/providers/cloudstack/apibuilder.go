@@ -36,7 +36,6 @@ func MachineDeployments(clusterSpec *cluster.Spec, kubeadmConfigTemplates map[st
 			kubeadmConfigTemplates[workerNodeGroupConfig.Name],
 			machineTemplates[workerNodeGroupConfig.Name],
 		)
-
 		if err != nil {
 			return nil, err
 		}

@@ -399,7 +399,7 @@ func TestGetVersionsBundlesErrorInvalidEksd(t *testing.T) {
 		},
 	}
 	eksd := map[anywherev1.KubernetesVersion]*eksdv1.Release{
-		"1.24": &eksdv1.Release{
+		"1.24": {
 			TypeMeta: metav1.TypeMeta{
 				Kind:       "Release",
 				APIVersion: "distro.eks.amazonaws.com/v1alpha1",
@@ -422,6 +422,46 @@ func TestGetVersionsBundlesErrorInvalidEksd(t *testing.T) {
 	}
 
 	_, err := cluster.NewSpec(config, bundles, eksd)
+	g.Expect(err).ToNot(BeNil())
+}
+
+func TestGetOldAndNewCPVersion(t *testing.T) {
+	g := NewWithT(t)
+	old := &cluster.Spec{
+		Config: &cluster.Config{
+			Cluster: &anywherev1.Cluster{
+				Spec: anywherev1.ClusterSpec{
+					KubernetesVersion: anywherev1.Kube119,
+				},
+			},
+		},
+		VersionsBundles: test.VersionsBundlesMap(),
+	}
+	new := old.DeepCopy()
+
+	_, _, err := cluster.GetOldAndNewCPVersionBundle(old, new)
+	g.Expect(err).To(BeNil())
+}
+
+func TestGetOldAndNewCPVersionError(t *testing.T) {
+	g := NewWithT(t)
+	old := &cluster.Spec{
+		Config: &cluster.Config{
+			Cluster: &anywherev1.Cluster{
+				Spec: anywherev1.ClusterSpec{
+					KubernetesVersion: anywherev1.Kube119,
+				},
+			},
+		},
+		VersionsBundles: make(map[anywherev1.KubernetesVersion]*cluster.VersionsBundle),
+	}
+	new := old.DeepCopy()
+
+	_, _, err := cluster.GetOldAndNewCPVersionBundle(old, new)
+	g.Expect(err).ToNot(BeNil())
+
+	old.VersionsBundles = test.VersionsBundlesMap()
+	_, _, err = cluster.GetOldAndNewCPVersionBundle(old, new)
 	g.Expect(err).ToNot(BeNil())
 }
 
