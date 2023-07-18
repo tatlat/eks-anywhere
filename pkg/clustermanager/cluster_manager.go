@@ -714,7 +714,7 @@ func (c *ClusterManager) EKSAClusterSpecChanged(ctx context.Context, clus *types
 	if !changed {
 		logger.V(3).Info("Clusters are the same")
 	}
-	return false, nil
+	return changed, nil
 }
 
 func compareEKSAClusterSpec(ctx context.Context, currentClusterSpec, newClusterSpec *cluster.Spec) (bool, error) {
