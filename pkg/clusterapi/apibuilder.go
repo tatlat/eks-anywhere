@@ -126,6 +126,10 @@ func Cluster(clusterSpec *cluster.Spec, infrastructureObject, controlPlaneObject
 
 func KubeadmControlPlane(clusterSpec *cluster.Spec, infrastructureObject APIObject) (*controlplanev1.KubeadmControlPlane, error) {
 	replicas := int32(clusterSpec.Cluster.Spec.ControlPlaneConfiguration.Count)
+	vb, err := clusterSpec.GetCPVersionsBundle()
+	if err != nil {
+		return nil, err
+	}
 
 	kcp := &controlplanev1.KubeadmControlPlane{
 		TypeMeta: metav1.TypeMeta{
@@ -146,11 +150,11 @@ func KubeadmControlPlane(clusterSpec *cluster.Spec, infrastructureObject APIObje
 			},
 			KubeadmConfigSpec: bootstrapv1.KubeadmConfigSpec{
 				ClusterConfiguration: &bootstrapv1.ClusterConfiguration{
-					ImageRepository: clusterSpec.VersionsBundle.KubeDistro.Kubernetes.Repository,
+					ImageRepository: vb.KubeDistro.Kubernetes.Repository,
 					DNS: bootstrapv1.DNS{
 						ImageMeta: bootstrapv1.ImageMeta{
-							ImageRepository: clusterSpec.VersionsBundle.KubeDistro.CoreDNS.Repository,
-							ImageTag:        clusterSpec.VersionsBundle.KubeDistro.CoreDNS.Tag,
+							ImageRepository: vb.KubeDistro.CoreDNS.Repository,
+							ImageTag:        vb.KubeDistro.CoreDNS.Tag,
 						},
 					},
 					APIServer: bootstrapv1.APIServer{
@@ -187,14 +191,14 @@ func KubeadmControlPlane(clusterSpec *cluster.Spec, infrastructureObject APIObje
 				Files:               []bootstrapv1.File{},
 			},
 			Replicas: &replicas,
-			Version:  clusterSpec.VersionsBundle.KubeDistro.Kubernetes.Tag,
+			Version:  vb.KubeDistro.Kubernetes.Tag,
 		},
 	}
 
 	SetIdentityAuthInKubeadmControlPlane(kcp, clusterSpec)
 
 	if clusterSpec.Cluster.Spec.ExternalEtcdConfiguration == nil {
-		setStackedEtcdConfigInKubeadmControlPlane(kcp, clusterSpec.VersionsBundle.KubeDistro.Etcd)
+		setStackedEtcdConfigInKubeadmControlPlane(kcp, vb.KubeDistro.Etcd)
 	}
 
 	return kcp, nil
@@ -241,15 +245,17 @@ func KubeadmConfigTemplate(clusterSpec *cluster.Spec, workerNodeGroupConfig anyw
 }
 
 // MachineDeployment builds a machineDeployment based on an eks-a cluster spec, workerNodeGroupConfig, bootstrapObject and infrastructureObject.
-func MachineDeployment(clusterSpec *cluster.Spec, workerNodeGroupConfig anywherev1.WorkerNodeGroupConfiguration, bootstrapObject, infrastructureObject APIObject) *clusterv1.MachineDeployment {
+func MachineDeployment(clusterSpec *cluster.Spec, workerNodeGroupConfig anywherev1.WorkerNodeGroupConfiguration, bootstrapObject, infrastructureObject APIObject) (*clusterv1.MachineDeployment, error) {
 	clusterName := clusterSpec.Cluster.GetName()
 	replicas := int32(*workerNodeGroupConfig.Count)
-	version := clusterSpec.VersionsBundle.KubeDistro.Kubernetes.Tag
-	wv, ok := clusterSpec.WorkerVersions[workerNodeGroupConfig.Name]
-
-	if workerNodeGroupConfig.KubernetesVersion != nil && ok {
-		version = wv.VersionsBundle.KubeDistro.Kubernetes.Tag
+	vb, err := clusterSpec.GetCPVersionsBundle()
+	if workerNodeGroupConfig.KubernetesVersion != nil {
+		vb, err = clusterSpec.GetVersionBundles(*workerNodeGroupConfig.KubernetesVersion)
 	}
+	if err != nil {
+		return nil, err
+	}
+	version := vb.KubeDistro.Kubernetes.Tag
 
 	md := &clusterv1.MachineDeployment{
 		TypeMeta: metav1.TypeMeta{
@@ -294,7 +300,7 @@ func MachineDeployment(clusterSpec *cluster.Spec, workerNodeGroupConfig anywhere
 
 	ConfigureAutoscalingInMachineDeployment(md, workerNodeGroupConfig.AutoScalingConfiguration)
 
-	return md
+	return md, nil
 }
 
 // EtcdadmCluster builds a etcdadmCluster based on an eks-a cluster spec and infrastructureTemplate.

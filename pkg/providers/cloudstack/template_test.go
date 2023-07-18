@@ -34,7 +34,7 @@ func TestTemplateBuilderGenerateCAPISpecControlPlaneNoKubernetesVersion(t *testi
 	clusterSpec := test.NewFullClusterSpec(t, path.Join(testDataDir, testClusterConfigMainFilename))
 	clusterSpec.Cluster.Spec.KubernetesVersion = ""
 	_, err := templateBuilder.GenerateCAPISpecControlPlane(clusterSpec)
-	g.Expect(err).To(MatchError(ContainSubstring("error building template map from CP error converting kubeVersion")))
+	g.Expect(err).To(MatchError(ContainSubstring("error building template map from CP")))
 }
 
 func TestTemplateBuilderGenerateCAPISpecControlPlaneMissingNames(t *testing.T) {

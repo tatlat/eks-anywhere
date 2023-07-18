@@ -65,8 +65,12 @@ func NewTemplateBuilder(datacenterSpec *v1alpha1.TinkerbellDatacenterConfigSpec,
 
 func (tb *TemplateBuilder) GenerateCAPISpecControlPlane(clusterSpec *cluster.Spec, buildOptions ...providers.BuildMapOption) (content []byte, err error) {
 	cpTemplateConfig := clusterSpec.TinkerbellTemplateConfigs[tb.controlPlaneMachineSpec.TemplateRef.Name]
+	vb, err := clusterSpec.GetCPVersionsBundle()
+	if err != nil {
+		return nil, err
+	}
 	if cpTemplateConfig == nil {
-		versionBundle := clusterSpec.VersionsBundle.VersionsBundle
+		versionBundle := vb.VersionsBundle
 		cpTemplateConfig = v1alpha1.NewDefaultTinkerbellTemplateConfigCreate(clusterSpec.Cluster, *versionBundle, tb.datacenterSpec.OSImageURL, tb.tinkerbellIP, tb.datacenterSpec.TinkerbellIP, tb.controlPlaneMachineSpec.OSFamily)
 	}
 
@@ -81,7 +85,7 @@ func (tb *TemplateBuilder) GenerateCAPISpecControlPlane(clusterSpec *cluster.Spe
 		etcdMachineSpec = *tb.etcdMachineSpec
 		etcdTemplateConfig := clusterSpec.TinkerbellTemplateConfigs[tb.etcdMachineSpec.TemplateRef.Name]
 		if etcdTemplateConfig == nil {
-			versionBundle := clusterSpec.VersionsBundle.VersionsBundle
+			versionBundle := vb.VersionsBundle
 			etcdTemplateConfig = v1alpha1.NewDefaultTinkerbellTemplateConfigCreate(clusterSpec.Cluster, *versionBundle, tb.datacenterSpec.OSImageURL, tb.tinkerbellIP, tb.datacenterSpec.TinkerbellIP, tb.etcdMachineSpec.OSFamily)
 		}
 		etcdTemplateString, err = etcdTemplateConfig.ToTemplateString()
@@ -106,11 +110,15 @@ func (tb *TemplateBuilder) GenerateCAPISpecControlPlane(clusterSpec *cluster.Spe
 
 func (tb *TemplateBuilder) GenerateCAPISpecWorkers(clusterSpec *cluster.Spec, workloadTemplateNames, kubeadmconfigTemplateNames map[string]string) (content []byte, err error) {
 	workerSpecs := make([][]byte, 0, len(clusterSpec.Cluster.Spec.WorkerNodeGroupConfigurations))
+	vb, err := clusterSpec.GetCPVersionsBundle()
+	if err != nil {
+		return nil, err
+	}
 	for _, workerNodeGroupConfiguration := range clusterSpec.Cluster.Spec.WorkerNodeGroupConfigurations {
 		workerNodeMachineSpec := tb.WorkerNodeGroupMachineSpecs[workerNodeGroupConfiguration.MachineGroupRef.Name]
 		wTemplateConfig := clusterSpec.TinkerbellTemplateConfigs[workerNodeMachineSpec.TemplateRef.Name]
 		if wTemplateConfig == nil {
-			versionBundle := clusterSpec.VersionsBundle.VersionsBundle
+			versionBundle := vb.VersionsBundle
 			wTemplateConfig = v1alpha1.NewDefaultTinkerbellTemplateConfigCreate(clusterSpec.Cluster, *versionBundle, tb.datacenterSpec.OSImageURL, tb.tinkerbellIP, tb.datacenterSpec.TinkerbellIP, workerNodeMachineSpec.OSFamily)
 		}
 
@@ -357,7 +365,10 @@ func buildTemplateMapCP(
 	etcdTemplateOverride string,
 	datacenterSpec v1alpha1.TinkerbellDatacenterConfigSpec,
 ) (map[string]interface{}, error) {
-	bundle := clusterSpec.VersionsBundle
+	bundle, err := clusterSpec.GetCPVersionsBundle()
+	if err != nil {
+		return nil, err
+	}
 	format := "cloud-config"
 
 	apiServerExtraArgs := clusterapi.OIDCToExtraArgs(clusterSpec.OIDCConfig).
@@ -476,7 +487,13 @@ func buildTemplateMapMD(
 	workerTemplateOverride string,
 	datacenterSpec v1alpha1.TinkerbellDatacenterConfigSpec,
 ) (map[string]interface{}, error) {
-	bundle := clusterSpec.VersionsBundle
+	bundle, err := clusterSpec.GetCPVersionsBundle()
+	if workerNodeGroupConfiguration.KubernetesVersion != nil {
+		bundle, err = clusterSpec.GetVersionBundles(*workerNodeGroupConfiguration.KubernetesVersion)
+	}
+	if err != nil {
+		return nil, err
+	}
 	format := "cloud-config"
 	wv, ok := clusterSpec.WorkerVersions[workerNodeGroupConfiguration.Name]
 	if workerNodeGroupConfiguration.KubernetesVersion != nil && ok {

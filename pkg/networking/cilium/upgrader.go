@@ -89,7 +89,12 @@ func (u *Upgrader) Upgrade(ctx context.Context, cluster *types.Cluster, currentS
 		return nil, err
 	}
 
-	previousCiliumVersion, err := semver.New(currentSpec.VersionsBundle.Cilium.Version)
+	vb, err := currentSpec.GetCPVersionsBundle()
+	if err != nil {
+		return nil, err
+	}
+
+	previousCiliumVersion, err := semver.New(vb.Cilium.Version)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +146,11 @@ func (u *Upgrader) waitForCilium(ctx context.Context, cluster *types.Cluster) er
 }
 
 func ciliumChangeDiff(currentSpec, newSpec *cluster.Spec) *types.ChangeDiff {
-	if currentSpec.VersionsBundle.Cilium.Version == newSpec.VersionsBundle.Cilium.Version {
+	cvb, nvb, err := cluster.GetOldAndNewCPVersionBundle(currentSpec, newSpec)
+	if err != nil {
+		return nil
+	}
+	if cvb.Cilium.Version == nvb.Cilium.Version {
 		return nil
 	}
 
@@ -149,8 +158,8 @@ func ciliumChangeDiff(currentSpec, newSpec *cluster.Spec) *types.ChangeDiff {
 		ComponentReports: []types.ComponentChangeDiff{
 			{
 				ComponentName: "cilium",
-				OldVersion:    currentSpec.VersionsBundle.Cilium.Version,
-				NewVersion:    newSpec.VersionsBundle.Cilium.Version,
+				OldVersion:    cvb.Cilium.Version,
+				NewVersion:    nvb.Cilium.Version,
 			},
 		},
 	}

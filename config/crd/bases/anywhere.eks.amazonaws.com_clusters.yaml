@@ -408,8 +408,9 @@ spec:
                         Defaults to 1.
                       type: integer
                     kubernetesVersion:
-                      description: KuberenetesVersion is the kubernetes version for
-                        worker nodes. Defaults to the cluster spec's KubernetesVersion.
+                      description: KuberenetesVersion defines the version for worker
+                        nodes. If not set, the top level spec kubernetesVersion will
+                        be used.
                       type: string
                     labels:
                       additionalProperties:

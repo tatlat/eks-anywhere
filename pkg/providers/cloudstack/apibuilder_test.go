@@ -160,10 +160,12 @@ func TestBasicCloudStackMachineDeployment(t *testing.T) {
 		workerNodeGroupConfig.Name: fullMatchineTemplate,
 	}
 	spec := &cluster.Spec{
-		VersionsBundle: &cluster.VersionsBundle{
-			KubeDistro: &cluster.KubeDistro{
-				Kubernetes: cluster.VersionedRepository{
-					Tag: "eksd-tag",
+		VersionsBundles: map[v1alpha1.KubernetesVersion]*cluster.VersionsBundle{
+			v1alpha1.Kube119: {
+				KubeDistro: &cluster.KubeDistro{
+					Kubernetes: cluster.VersionedRepository{
+						Tag: "eksd-tag",
+					},
 				},
 			},
 		},
@@ -173,11 +175,13 @@ func TestBasicCloudStackMachineDeployment(t *testing.T) {
 					WorkerNodeGroupConfigurations: []v1alpha1.WorkerNodeGroupConfiguration{
 						workerNodeGroupConfig,
 					},
+					KubernetesVersion: v1alpha1.Kube119,
 				},
 			},
 		},
 	}
-	got := cloudstack.MachineDeployments(spec, kubeadmConfigTemplates, matchineTemplates)
+	got, err := cloudstack.MachineDeployments(spec, kubeadmConfigTemplates, matchineTemplates)
+	tt.Expect(err).To(BeNil())
 	tt.Expect(len(got)).To(Equal(*workerNodeGroupConfig.Count))
 	tt.Expect(int(*got[workerNodeGroupConfig.Name].Spec.Replicas)).To(Equal(*workerNodeGroupConfig.Count))
 	tt.Expect(got[workerNodeGroupConfig.Name].Spec.Template.Spec.InfrastructureRef.Name).To(Equal(fullMatchineTemplate.Name))

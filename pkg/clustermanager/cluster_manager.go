@@ -76,7 +76,7 @@ var (
 
 type ClusterManager struct {
 	eksaComponents     EKSAComponents
-	Client             cluster.Client
+	ClientFactory      ClientFactory
 	clusterClient      *RetrierClient
 	retrier            *retrier.Retrier
 	writer             filewriter.FileWriter
@@ -172,10 +172,10 @@ func DefaultRetrier() *retrier.Retrier {
 }
 
 // New constructs a new ClusterManager.
-func New(client cluster.Client, clusterClient *RetrierClient, networking Networking, writer filewriter.FileWriter, diagnosticBundleFactory diagnostics.DiagnosticBundleFactory, awsIamAuth AwsIamAuth, eksaComponents EKSAComponents, opts ...ClusterManagerOpt) *ClusterManager {
+func New(client ClientFactory, clusterClient *RetrierClient, networking Networking, writer filewriter.FileWriter, diagnosticBundleFactory diagnostics.DiagnosticBundleFactory, awsIamAuth AwsIamAuth, eksaComponents EKSAComponents, opts ...ClusterManagerOpt) *ClusterManager {
 	c := &ClusterManager{
 		eksaComponents:                   eksaComponents,
-		Client:                           client,
+		ClientFactory:                    client,
 		clusterClient:                    clusterClient,
 		writer:                           writer,
 		networking:                       networking,
@@ -689,8 +689,9 @@ func (c *ClusterManager) UpgradeCluster(ctx context.Context, managementCluster, 
 	return nil
 }
 
-func (c *ClusterManager) EKSAClusterSpecChanged(ctx context.Context, cluster *types.Cluster, newClusterSpec *cluster.Spec) (bool, error) {
-	cc, err := c.clusterClient.GetEksaCluster(ctx, cluster, newClusterSpec.Cluster.Name)
+// EKSAClusterSpecChanged checks if a cluster's new Spec is different from the current Spec.
+func (c *ClusterManager) EKSAClusterSpecChanged(ctx context.Context, clus *types.Cluster, newClusterSpec *cluster.Spec) (bool, error) {
+	cc, err := c.clusterClient.GetEksaCluster(ctx, clus, newClusterSpec.Cluster.Name)
 	if err != nil {
 		return false, err
 	}
@@ -700,12 +701,29 @@ func (c *ClusterManager) EKSAClusterSpecChanged(ctx context.Context, cluster *ty
 		return true, nil
 	}
 
-	currentClusterSpec, err := c.buildSpecForCluster(ctx, cluster, cc)
+	currentClusterSpec, err := c.buildSpecForCluster(ctx, clus, cc)
 	if err != nil {
 		return false, err
 	}
 
-	if currentClusterSpec.VersionsBundle.EksD.Name != newClusterSpec.VersionsBundle.EksD.Name {
+	changed, err := compareEKSAClusterSpec(ctx, currentClusterSpec, newClusterSpec)
+	if err != nil {
+		return false, err
+	}
+
+	if !changed {
+		logger.V(3).Info("Clusters are the same")
+	}
+	return changed, nil
+}
+
+func compareEKSAClusterSpec(ctx context.Context, currentClusterSpec, newClusterSpec *cluster.Spec) (bool, error) {
+	cvb, nvb, err := cluster.GetOldAndNewCPVersionBundle(currentClusterSpec, newClusterSpec)
+	if err != nil {
+		return false, err
+	}
+
+	if cvb.EksD.Name != nvb.EksD.Name {
 		logger.V(3).Info("New eks-d release detected")
 		return true, nil
 	}
@@ -725,7 +743,6 @@ func (c *ClusterManager) EKSAClusterSpecChanged(ctx context.Context, cluster *ty
 		}
 	}
 
-	logger.V(3).Info("Clusters are the same")
 	return false, nil
 }
 
@@ -777,7 +794,7 @@ func getProviderNamespaces(providerDeployments map[string][]string) []string {
 }
 
 func (c *ClusterManager) InstallMachineHealthChecks(ctx context.Context, clusterSpec *cluster.Spec, workloadCluster *types.Cluster) error {
-	mhc, err := templater.ObjectsToYaml(clusterapi.MachineHealthCheckObjects(clusterSpec, c.unhealthyMachineTimeout, c.nodeStartupTimeout)...)
+	mhc, err := templater.ObjectsToYaml(kubernetes.ObjectsToRuntimeObjects(clusterapi.MachineHealthCheckObjects(clusterSpec.Cluster, c.unhealthyMachineTimeout, c.nodeStartupTimeout))...)
 	if err != nil {
 		return err
 	}
@@ -1305,7 +1322,11 @@ func (c *ClusterManager) GetCurrentClusterSpec(ctx context.Context, clus *types.
 }
 
 func (c *ClusterManager) buildSpecForCluster(ctx context.Context, clus *types.Cluster, eksaCluster *v1alpha1.Cluster) (*cluster.Spec, error) {
-	return cluster.BuildSpec(ctx, c.Client, eksaCluster)
+	client, err := c.ClientFactory.BuildClientFromKubeconfig(clus.KubeconfigFile)
+	if err != nil {
+		return nil, err
+	}
+	return cluster.BuildSpec(ctx, client, eksaCluster)
 }
 
 func (c *ClusterManager) DeletePackageResources(ctx context.Context, managementCluster *types.Cluster, clusterName string) error {

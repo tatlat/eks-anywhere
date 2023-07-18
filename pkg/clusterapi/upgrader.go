@@ -75,63 +75,68 @@ func capiChangeDiff(currentSpec, newSpec *cluster.Spec, provider providers.Provi
 	changeDiff := &CAPIChangeDiff{}
 	componentChanged := false
 
-	if currentSpec.VersionsBundle.CertManager.Version != newSpec.VersionsBundle.CertManager.Version {
+	cvb, nvb, err := cluster.GetOldAndNewCPVersionBundle(currentSpec, newSpec)
+	if err != nil {
+		return nil
+	}
+
+	if cvb.CertManager.Version != nvb.CertManager.Version {
 		changeDiff.CertManager = &types.ComponentChangeDiff{
 			ComponentName: "cert-manager",
-			NewVersion:    newSpec.VersionsBundle.CertManager.Version,
-			OldVersion:    currentSpec.VersionsBundle.CertManager.Version,
+			NewVersion:    nvb.CertManager.Version,
+			OldVersion:    cvb.CertManager.Version,
 		}
 		logger.V(1).Info("Cert-manager change diff", "oldVersion", changeDiff.CertManager.OldVersion, "newVersion", changeDiff.CertManager.NewVersion)
 		componentChanged = true
 	}
 
-	if currentSpec.VersionsBundle.ClusterAPI.Version != newSpec.VersionsBundle.ClusterAPI.Version {
+	if cvb.ClusterAPI.Version != nvb.ClusterAPI.Version {
 		changeDiff.Core = &types.ComponentChangeDiff{
 			ComponentName: "cluster-api",
-			NewVersion:    newSpec.VersionsBundle.ClusterAPI.Version,
-			OldVersion:    currentSpec.VersionsBundle.ClusterAPI.Version,
+			NewVersion:    nvb.ClusterAPI.Version,
+			OldVersion:    cvb.ClusterAPI.Version,
 		}
 		logger.V(1).Info("CAPI Core change diff", "oldVersion", changeDiff.Core.OldVersion, "newVersion", changeDiff.Core.NewVersion)
 		componentChanged = true
 	}
 
-	if currentSpec.VersionsBundle.ControlPlane.Version != newSpec.VersionsBundle.ControlPlane.Version {
+	if cvb.ControlPlane.Version != nvb.ControlPlane.Version {
 		changeDiff.ControlPlane = &types.ComponentChangeDiff{
 			ComponentName: "kubeadm",
-			NewVersion:    newSpec.VersionsBundle.ControlPlane.Version,
-			OldVersion:    currentSpec.VersionsBundle.ControlPlane.Version,
+			NewVersion:    nvb.ControlPlane.Version,
+			OldVersion:    cvb.ControlPlane.Version,
 		}
 		logger.V(1).Info("CAPI Control Plane provider change diff", "oldVersion", changeDiff.ControlPlane.OldVersion, "newVersion", changeDiff.ControlPlane.NewVersion)
 		componentChanged = true
 	}
 
-	if currentSpec.VersionsBundle.Bootstrap.Version != newSpec.VersionsBundle.Bootstrap.Version {
+	if cvb.Bootstrap.Version != nvb.Bootstrap.Version {
 		componentChangeDiff := types.ComponentChangeDiff{
 			ComponentName: "kubeadm",
-			NewVersion:    newSpec.VersionsBundle.Bootstrap.Version,
-			OldVersion:    currentSpec.VersionsBundle.Bootstrap.Version,
+			NewVersion:    nvb.Bootstrap.Version,
+			OldVersion:    cvb.Bootstrap.Version,
 		}
 		changeDiff.BootstrapProviders = append(changeDiff.BootstrapProviders, componentChangeDiff)
 		logger.V(1).Info("CAPI Kubeadm Bootstrap Provider change diff", "oldVersion", componentChangeDiff.OldVersion, "newVersion", componentChangeDiff.NewVersion)
 		componentChanged = true
 	}
 
-	if currentSpec.VersionsBundle.ExternalEtcdBootstrap.Version != newSpec.VersionsBundle.ExternalEtcdBootstrap.Version {
+	if cvb.ExternalEtcdBootstrap.Version != nvb.ExternalEtcdBootstrap.Version {
 		componentChangeDiff := types.ComponentChangeDiff{
 			ComponentName: "etcdadm-bootstrap",
-			NewVersion:    newSpec.VersionsBundle.ExternalEtcdBootstrap.Version,
-			OldVersion:    currentSpec.VersionsBundle.ExternalEtcdBootstrap.Version,
+			NewVersion:    nvb.ExternalEtcdBootstrap.Version,
+			OldVersion:    cvb.ExternalEtcdBootstrap.Version,
 		}
 		changeDiff.BootstrapProviders = append(changeDiff.BootstrapProviders, componentChangeDiff)
 		logger.V(1).Info("CAPI Etcdadm Bootstrap Provider change diff", "oldVersion", componentChangeDiff.OldVersion, "newVersion", componentChangeDiff.NewVersion)
 		componentChanged = true
 	}
 
-	if currentSpec.VersionsBundle.ExternalEtcdController.Version != newSpec.VersionsBundle.ExternalEtcdController.Version {
+	if cvb.ExternalEtcdController.Version != nvb.ExternalEtcdController.Version {
 		componentChangeDiff := types.ComponentChangeDiff{
 			ComponentName: "etcdadm-controller",
-			NewVersion:    newSpec.VersionsBundle.ExternalEtcdController.Version,
-			OldVersion:    currentSpec.VersionsBundle.ExternalEtcdController.Version,
+			NewVersion:    nvb.ExternalEtcdController.Version,
+			OldVersion:    cvb.ExternalEtcdController.Version,
 		}
 		changeDiff.BootstrapProviders = append(changeDiff.BootstrapProviders, componentChangeDiff)
 		logger.V(1).Info("CAPI Etcdadm Controller Provider change diff", "oldVersion", componentChangeDiff.OldVersion, "newVersion", componentChangeDiff.NewVersion)

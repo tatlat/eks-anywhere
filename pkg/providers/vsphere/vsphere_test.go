@@ -218,8 +218,8 @@ func givenClusterSpec(t *testing.T, fileName string) *cluster.Spec {
 
 func givenEmptyClusterSpec() *cluster.Spec {
 	return test.NewClusterSpec(func(s *cluster.Spec) {
-		s.VersionsBundle.KubeVersion = "1.19"
-		s.VersionsBundle.EksD.Name = eksd119Release
+		s.VersionsBundles["1.19"].KubeVersion = "1.19"
+		s.VersionsBundles["1.19"].EksD.Name = eksd119Release
 		s.Cluster.Namespace = "test-namespace"
 		s.VSphereDatacenter = &v1alpha1.VSphereDatacenterConfig{}
 	})
@@ -1765,7 +1765,7 @@ func TestVersion(t *testing.T) {
 	vSphereProviderVersion := "v0.7.10"
 	provider := givenProvider(t)
 	clusterSpec := givenEmptyClusterSpec()
-	clusterSpec.VersionsBundle.VSphere.Version = vSphereProviderVersion
+	clusterSpec.VersionsBundles["1.19"].VSphere.Version = vSphereProviderVersion
 	setupContext(t)
 
 	result := provider.Version(clusterSpec)
@@ -2713,12 +2713,12 @@ func TestSetupAndValidateCreateClusterErrorGettingTags(t *testing.T) {
 func TestSetupAndValidateCreateClusterDefaultTemplate(t *testing.T) {
 	ctx := context.Background()
 	clusterSpec := givenClusterSpec(t, testClusterConfigMainFilename)
-	clusterSpec.VersionsBundle.EksD.Ova.Bottlerocket.URI = "https://amazonaws.com/artifacts/0.0.1/eks-distro/ova/1-19/1-19-4/bottlerocket-eks-a-0.0.1.build.38-amd64.ova"
-	clusterSpec.VersionsBundle.EksD.Ova.Bottlerocket.SHA256 = "63a8dce1683379cb8df7d15e9c5adf9462a2b9803a544dd79b16f19a4657967f"
-	clusterSpec.VersionsBundle.EksD.Ova.Bottlerocket.Arch = []string{"amd64"}
-	clusterSpec.VersionsBundle.EksD.Name = eksd119Release
-	clusterSpec.VersionsBundle.EksD.KubeVersion = "v1.19.8"
-	clusterSpec.VersionsBundle.KubeVersion = "1.19"
+	clusterSpec.VersionsBundles["1.19"].EksD.Ova.Bottlerocket.URI = "https://amazonaws.com/artifacts/0.0.1/eks-distro/ova/1-19/1-19-4/bottlerocket-eks-a-0.0.1.build.38-amd64.ova"
+	clusterSpec.VersionsBundles["1.19"].EksD.Ova.Bottlerocket.SHA256 = "63a8dce1683379cb8df7d15e9c5adf9462a2b9803a544dd79b16f19a4657967f"
+	clusterSpec.VersionsBundles["1.19"].EksD.Ova.Bottlerocket.Arch = []string{"amd64"}
+	clusterSpec.VersionsBundles["1.19"].EksD.Name = eksd119Release
+	clusterSpec.VersionsBundles["1.19"].EksD.KubeVersion = "v1.19.8"
+	clusterSpec.VersionsBundles["1.19"].KubeVersion = "1.19"
 	clusterSpec.Cluster.Namespace = "test-namespace"
 	provider := givenProvider(t)
 	controlPlaneMachineConfigName := clusterSpec.Cluster.Spec.ControlPlaneConfiguration.MachineGroupRef.Name
@@ -2744,7 +2744,7 @@ func TestGetInfrastructureBundleSuccess(t *testing.T) {
 		{
 			testName: "correct Overrides layer",
 			clusterSpec: test.NewClusterSpec(func(s *cluster.Spec) {
-				s.VersionsBundle.VSphere = releasev1alpha1.VSphereBundle{
+				s.VersionsBundles["1.19"].VSphere = releasev1alpha1.VSphereBundle{
 					Version: "v0.7.8",
 					ClusterAPIController: releasev1alpha1.Image{
 						URI: "public.ecr.aws/l0g8r8j6/kubernetes-sigs/cluster-api-provider-vsphere/release/manager:v0.7.8-35f54b0a7ff0f4f3cb0b8e30a0650acd0e55496a",
@@ -2779,10 +2779,14 @@ func TestGetInfrastructureBundleSuccess(t *testing.T) {
 			}
 			assert.Equal(t, "infrastructure-vsphere/v0.7.8/", infraBundle.FolderName, "Incorrect folder name")
 			assert.Equal(t, len(infraBundle.Manifests), 3, "Wrong number of files in the infrastructure bundle")
+			vb, err := tt.clusterSpec.GetCPVersionsBundle()
+			if err != nil {
+				t.Error("Can't get VersionsBundle")
+			}
 			wantManifests := []releasev1alpha1.Manifest{
-				tt.clusterSpec.VersionsBundle.VSphere.Components,
-				tt.clusterSpec.VersionsBundle.VSphere.Metadata,
-				tt.clusterSpec.VersionsBundle.VSphere.ClusterTemplate,
+				vb.VSphere.Components,
+				vb.VSphere.Metadata,
+				vb.VSphere.ClusterTemplate,
 			}
 			assert.ElementsMatch(t, infraBundle.Manifests, wantManifests, "Incorrect manifests")
 		})
@@ -3017,10 +3021,10 @@ func TestChangeDiffNoChange(t *testing.T) {
 func TestChangeDiffWithChange(t *testing.T) {
 	provider := givenProvider(t)
 	clusterSpec := test.NewClusterSpec(func(s *cluster.Spec) {
-		s.VersionsBundle.VSphere.Version = "v0.3.18"
+		s.VersionsBundles["1.19"].VSphere.Version = "v0.3.18"
 	})
 	newClusterSpec := test.NewClusterSpec(func(s *cluster.Spec) {
-		s.VersionsBundle.VSphere.Version = "v0.3.19"
+		s.VersionsBundles["1.19"].VSphere.Version = "v0.3.19"
 	})
 
 	wantDiff := &types.ComponentChangeDiff{
@@ -3061,13 +3065,13 @@ func TestProviderUpgradeNeeded(t *testing.T) {
 		t.Run(tt.testName, func(t *testing.T) {
 			provider := givenProvider(t)
 			clusterSpec := test.NewClusterSpec(func(s *cluster.Spec) {
-				s.VersionsBundle.VSphere.Manager.ImageDigest = tt.oldManager
-				s.VersionsBundle.VSphere.KubeVip.ImageDigest = tt.oldKubeVip
+				s.VersionsBundles["1.19"].VSphere.Manager.ImageDigest = tt.oldManager
+				s.VersionsBundles["1.19"].VSphere.KubeVip.ImageDigest = tt.oldKubeVip
 			})
 
 			newClusterSpec := test.NewClusterSpec(func(s *cluster.Spec) {
-				s.VersionsBundle.VSphere.Manager.ImageDigest = tt.newManager
-				s.VersionsBundle.VSphere.KubeVip.ImageDigest = tt.newKubeVip
+				s.VersionsBundles["1.19"].VSphere.Manager.ImageDigest = tt.newManager
+				s.VersionsBundles["1.19"].VSphere.KubeVip.ImageDigest = tt.newKubeVip
 			})
 
 			g := NewWithT(t)

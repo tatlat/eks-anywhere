@@ -77,7 +77,10 @@ func TestSetBottlerocketInKubeadmControlPlane(t *testing.T) {
 	)
 	want.Spec.KubeadmConfigSpec.ClusterConfiguration.CertificatesDir = "/var/lib/kubeadm/pki"
 
-	clusterapi.SetBottlerocketInKubeadmControlPlane(got, g.clusterSpec.VersionsBundle)
+	vb, err := g.clusterSpec.GetCPVersionsBundle()
+	g.Expect(err).To(BeNil())
+
+	clusterapi.SetBottlerocketInKubeadmControlPlane(got, vb)
 	g.Expect(got).To(Equal(want))
 }
 
@@ -88,7 +91,10 @@ func TestSetBottlerocketAdminContainerImageInKubeadmControlPlane(t *testing.T) {
 	want.Spec.KubeadmConfigSpec.ClusterConfiguration.BottlerocketAdmin = adminContainer
 	want.Spec.KubeadmConfigSpec.JoinConfiguration.BottlerocketAdmin = adminContainer
 
-	clusterapi.SetBottlerocketAdminContainerImageInKubeadmControlPlane(got, g.clusterSpec.VersionsBundle)
+	vb, err := g.clusterSpec.GetCPVersionsBundle()
+	g.Expect(err).To(BeNil())
+
+	clusterapi.SetBottlerocketAdminContainerImageInKubeadmControlPlane(got, vb)
 	g.Expect(got).To(Equal(want))
 }
 
@@ -99,7 +105,10 @@ func TestSetBottlerocketControlContainerImageInKubeadmControlPlane(t *testing.T)
 	want.Spec.KubeadmConfigSpec.ClusterConfiguration.BottlerocketControl = controlContainer
 	want.Spec.KubeadmConfigSpec.JoinConfiguration.BottlerocketControl = controlContainer
 
-	clusterapi.SetBottlerocketControlContainerImageInKubeadmControlPlane(got, g.clusterSpec.VersionsBundle)
+	vb, err := g.clusterSpec.GetCPVersionsBundle()
+	g.Expect(err).To(BeNil())
+
+	clusterapi.SetBottlerocketControlContainerImageInKubeadmControlPlane(got, vb)
 	g.Expect(got).To(Equal(want))
 }
 
@@ -111,7 +120,10 @@ func TestSetBottlerocketInKubeadmConfigTemplate(t *testing.T) {
 	want.Spec.Template.Spec.JoinConfiguration.BottlerocketBootstrap = bootstrap
 	want.Spec.Template.Spec.JoinConfiguration.Pause = pause
 
-	clusterapi.SetBottlerocketInKubeadmConfigTemplate(got, g.clusterSpec.VersionsBundle)
+	vb, err := g.clusterSpec.GetCPVersionsBundle()
+	g.Expect(err).To(BeNil())
+
+	clusterapi.SetBottlerocketInKubeadmConfigTemplate(got, vb)
 	g.Expect(got).To(Equal(want))
 }
 
@@ -121,7 +133,10 @@ func TestSetBottlerocketAdminContainerImageInKubeadmConfigTemplate(t *testing.T)
 	want := got.DeepCopy()
 	want.Spec.Template.Spec.JoinConfiguration.BottlerocketAdmin = adminContainer
 
-	clusterapi.SetBottlerocketAdminContainerImageInKubeadmConfigTemplate(got, g.clusterSpec.VersionsBundle)
+	vb, err := g.clusterSpec.GetCPVersionsBundle()
+	g.Expect(err).To(BeNil())
+
+	clusterapi.SetBottlerocketAdminContainerImageInKubeadmConfigTemplate(got, vb)
 	g.Expect(got).To(Equal(want))
 }
 
@@ -131,7 +146,10 @@ func TestSetBottlerocketControlContainerImageInKubeadmConfigTemplate(t *testing.
 	want := got.DeepCopy()
 	want.Spec.Template.Spec.JoinConfiguration.BottlerocketControl = controlContainer
 
-	clusterapi.SetBottlerocketControlContainerImageInKubeadmConfigTemplate(got, g.clusterSpec.VersionsBundle)
+	vb, err := g.clusterSpec.GetCPVersionsBundle()
+	g.Expect(err).To(BeNil())
+
+	clusterapi.SetBottlerocketControlContainerImageInKubeadmConfigTemplate(got, vb)
 	g.Expect(got).To(Equal(want))
 }
 
@@ -145,7 +163,9 @@ func TestSetBottlerocketInEtcdCluster(t *testing.T) {
 		BootstrapImage: "public.ecr.aws/eks-anywhere/bottlerocket-bootstrap:0.0.1",
 		PauseImage:     "public.ecr.aws/eks-distro/kubernetes/pause:0.0.1",
 	}
-	clusterapi.SetBottlerocketInEtcdCluster(got, g.clusterSpec.VersionsBundle)
+	vb, err := g.clusterSpec.GetCPVersionsBundle()
+	g.Expect(err).To(BeNil())
+	clusterapi.SetBottlerocketInEtcdCluster(got, vb)
 	g.Expect(got).To(Equal(want))
 }
 
@@ -159,7 +179,9 @@ func TestSetBottlerocketAdminContainerImageInEtcdCluster(t *testing.T) {
 	}
 	want := got.DeepCopy()
 	want.Spec.EtcdadmConfigSpec.BottlerocketConfig.AdminImage = "public.ecr.aws/eks-anywhere/bottlerocket-admin:0.0.1"
-	clusterapi.SetBottlerocketAdminContainerImageInEtcdCluster(got, g.clusterSpec.VersionsBundle.BottleRocketHostContainers.Admin)
+	vb, err := g.clusterSpec.GetCPVersionsBundle()
+	g.Expect(err).To(BeNil())
+	clusterapi.SetBottlerocketAdminContainerImageInEtcdCluster(got, vb.BottleRocketHostContainers.Admin)
 	g.Expect(got).To(Equal(want))
 }
 
@@ -173,7 +195,9 @@ func TestSetBottlerocketControlContainerImageInEtcdCluster(t *testing.T) {
 	}
 	want := got.DeepCopy()
 	want.Spec.EtcdadmConfigSpec.BottlerocketConfig.ControlImage = "public.ecr.aws/eks-anywhere/bottlerocket-control:0.0.1"
-	clusterapi.SetBottlerocketControlContainerImageInEtcdCluster(got, g.clusterSpec.VersionsBundle.BottleRocketHostContainers.Control)
+	vb, err := g.clusterSpec.GetCPVersionsBundle()
+	g.Expect(err).To(BeNil())
+	clusterapi.SetBottlerocketControlContainerImageInEtcdCluster(got, vb.BottleRocketHostContainers.Control)
 	g.Expect(got).To(Equal(want))
 }
 

@@ -150,12 +150,16 @@ func (g *FileGenerator) WriteFluxSync() error {
 }
 
 func (g *FileGenerator) WriteFluxPatch(clusterSpec *cluster.Spec) error {
+	vb, err := clusterSpec.GetCPVersionsBundle()
+	if err != nil {
+		return err
+	}
 	values := map[string]string{
 		"Namespace":                   clusterSpec.FluxConfig.Spec.SystemNamespace,
-		"SourceControllerImage":       clusterSpec.VersionsBundle.Flux.SourceController.VersionedImage(),
-		"KustomizeControllerImage":    clusterSpec.VersionsBundle.Flux.KustomizeController.VersionedImage(),
-		"HelmControllerImage":         clusterSpec.VersionsBundle.Flux.HelmController.VersionedImage(),
-		"NotificationControllerImage": clusterSpec.VersionsBundle.Flux.NotificationController.VersionedImage(),
+		"SourceControllerImage":       vb.Flux.SourceController.VersionedImage(),
+		"KustomizeControllerImage":    vb.Flux.KustomizeController.VersionedImage(),
+		"HelmControllerImage":         vb.Flux.HelmController.VersionedImage(),
+		"NotificationControllerImage": vb.Flux.NotificationController.VersionedImage(),
 	}
 	if path, err := g.fluxTemplater.WriteToFile(fluxPatchContent, values, fluxPatchFileName, filewriter.PersistentFile); err != nil {
 		return fmt.Errorf("creating flux-system patch manifest file into %s: %v", path, err)

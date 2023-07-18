@@ -142,7 +142,7 @@ func TestProviderGenerateDeploymentFileSuccessUpdateMachineTemplate(t *testing.T
 				s.Cluster.Spec.ClusterNetwork.Pods.CidrBlocks = []string{"192.168.0.0/16"}
 				s.Cluster.Spec.ClusterNetwork.Services.CidrBlocks = []string{"10.128.0.0/12"}
 				s.Cluster.Spec.ControlPlaneConfiguration.Count = 3
-				s.VersionsBundle = versionsBundle
+				s.VersionsBundles["1.19"] = versionsBundle
 				s.Cluster.Spec.ExternalEtcdConfiguration = &v1alpha1.ExternalEtcdConfiguration{Count: 3}
 				s.Cluster.Spec.WorkerNodeGroupConfigurations = []v1alpha1.WorkerNodeGroupConfiguration{{Count: ptr.Int(3), MachineGroupRef: &v1alpha1.Ref{Name: "test-cluster"}, Name: "md-0"}}
 			}),
@@ -157,7 +157,7 @@ func TestProviderGenerateDeploymentFileSuccessUpdateMachineTemplate(t *testing.T
 				s.Cluster.Spec.ClusterNetwork.Pods.CidrBlocks = []string{"192.168.0.0/16"}
 				s.Cluster.Spec.ClusterNetwork.Services.CidrBlocks = []string{"10.128.0.0/12"}
 				s.Cluster.Spec.ControlPlaneConfiguration.Count = 3
-				s.VersionsBundle = versionsBundle
+				s.VersionsBundles["1.24"] = versionsBundle
 				s.Cluster.Spec.ExternalEtcdConfiguration = &v1alpha1.ExternalEtcdConfiguration{Count: 3}
 				s.Cluster.Spec.WorkerNodeGroupConfigurations = []v1alpha1.WorkerNodeGroupConfiguration{{Count: ptr.Int(3), MachineGroupRef: &v1alpha1.Ref{Name: "test-cluster"}, Name: "md-0"}}
 			}),
@@ -173,7 +173,7 @@ func TestProviderGenerateDeploymentFileSuccessUpdateMachineTemplate(t *testing.T
 				s.Cluster.Spec.ClusterNetwork.Services.CidrBlocks = []string{"10.128.0.0/12"}
 				s.Cluster.Spec.ControlPlaneConfiguration.Count = 3
 				s.Cluster.Spec.ControlPlaneConfiguration.Taints = cpTaints
-				s.VersionsBundle = versionsBundle
+				s.VersionsBundles["1.19"] = versionsBundle
 				s.Cluster.Spec.ExternalEtcdConfiguration = &v1alpha1.ExternalEtcdConfiguration{Count: 3}
 				s.Cluster.Spec.WorkerNodeGroupConfigurations = []v1alpha1.WorkerNodeGroupConfiguration{{Count: ptr.Int(3), MachineGroupRef: &v1alpha1.Ref{Name: "test-cluster"}, Name: "md-0"}}
 			}),
@@ -189,7 +189,7 @@ func TestProviderGenerateDeploymentFileSuccessUpdateMachineTemplate(t *testing.T
 				s.Cluster.Spec.ClusterNetwork.Services.CidrBlocks = []string{"10.128.0.0/12"}
 				s.Cluster.Spec.ControlPlaneConfiguration.Count = 3
 				s.Cluster.Spec.ControlPlaneConfiguration.Taints = cpTaints
-				s.VersionsBundle = versionsBundle
+				s.VersionsBundles["1.19"] = versionsBundle
 				s.Cluster.Spec.ExternalEtcdConfiguration = &v1alpha1.ExternalEtcdConfiguration{Count: 3}
 				s.Cluster.Spec.WorkerNodeGroupConfigurations = []v1alpha1.WorkerNodeGroupConfiguration{{Count: ptr.Int(3), Taints: wnTaints, MachineGroupRef: &v1alpha1.Ref{Name: "test-cluster"}, Name: "md-0"}}
 			}),
@@ -206,7 +206,7 @@ func TestProviderGenerateDeploymentFileSuccessUpdateMachineTemplate(t *testing.T
 				s.Cluster.Spec.ControlPlaneConfiguration.Count = 3
 				s.Cluster.Spec.ControlPlaneConfiguration.Taints = cpTaints
 				s.Cluster.Spec.WorkerNodeGroupConfigurations = []v1alpha1.WorkerNodeGroupConfiguration{{Count: ptr.Int(3), Taints: wnTaints, MachineGroupRef: &v1alpha1.Ref{Name: "test-cluster"}, Name: "md-0"}, {Count: ptr.Int(3), Taints: wnTaints2, MachineGroupRef: &v1alpha1.Ref{Name: "test-cluster"}, Name: "md-1"}}
-				s.VersionsBundle = versionsBundle
+				s.VersionsBundles["1.19"] = versionsBundle
 				s.Cluster.Spec.ExternalEtcdConfiguration = &v1alpha1.ExternalEtcdConfiguration{Count: 3}
 			}),
 			wantCPFile: "testdata/valid_deployment_cp_taints_expected.yaml",
@@ -220,7 +220,7 @@ func TestProviderGenerateDeploymentFileSuccessUpdateMachineTemplate(t *testing.T
 				s.Cluster.Spec.ClusterNetwork.Pods.CidrBlocks = []string{"192.168.0.0/16"}
 				s.Cluster.Spec.ClusterNetwork.Services.CidrBlocks = []string{"10.128.0.0/12"}
 				s.Cluster.Spec.ControlPlaneConfiguration.Count = 3
-				s.VersionsBundle = versionsBundle
+				s.VersionsBundles["1.19"] = versionsBundle
 				s.Cluster.Spec.ExternalEtcdConfiguration = &v1alpha1.ExternalEtcdConfiguration{Count: 3}
 				s.Cluster.Spec.WorkerNodeGroupConfigurations = []v1alpha1.WorkerNodeGroupConfiguration{{Count: ptr.Int(3), MachineGroupRef: &v1alpha1.Ref{Name: "test-cluster"}, Labels: nodeLabels, Name: "md-0"}}
 			}),
@@ -236,7 +236,7 @@ func TestProviderGenerateDeploymentFileSuccessUpdateMachineTemplate(t *testing.T
 				s.Cluster.Spec.ClusterNetwork.Services.CidrBlocks = []string{"10.128.0.0/12"}
 				s.Cluster.Spec.ControlPlaneConfiguration.Count = 3
 				s.Cluster.Spec.ControlPlaneConfiguration.Labels = nodeLabels
-				s.VersionsBundle = versionsBundle
+				s.VersionsBundles["1.19"] = versionsBundle
 				s.Cluster.Spec.ExternalEtcdConfiguration = &v1alpha1.ExternalEtcdConfiguration{Count: 3}
 				s.Cluster.Spec.WorkerNodeGroupConfigurations = []v1alpha1.WorkerNodeGroupConfiguration{{Count: ptr.Int(3), MachineGroupRef: &v1alpha1.Ref{Name: "test-cluster"}, Name: "md-0"}}
 			}),
@@ -252,7 +252,7 @@ func TestProviderGenerateDeploymentFileSuccessUpdateMachineTemplate(t *testing.T
 				s.Cluster.Spec.ClusterNetwork.Services.CidrBlocks = []string{"192.168.0.0/16", "10.10.0.0/16"}
 				s.Cluster.Spec.ClusterNetwork.DNS.ResolvConf = &v1alpha1.ResolvConf{Path: "/etc/my-custom-resolv.conf"}
 				s.Cluster.Spec.ControlPlaneConfiguration.Count = 3
-				s.VersionsBundle = versionsBundle
+				s.VersionsBundles["1.19"] = versionsBundle
 				s.Cluster.Spec.ExternalEtcdConfiguration = &v1alpha1.ExternalEtcdConfiguration{Count: 3}
 				s.Cluster.Spec.WorkerNodeGroupConfigurations = []v1alpha1.WorkerNodeGroupConfiguration{{Count: ptr.Int(3), MachineGroupRef: &v1alpha1.Ref{Name: "test-cluster"}, Name: "md-0"}}
 			}),
@@ -267,7 +267,7 @@ func TestProviderGenerateDeploymentFileSuccessUpdateMachineTemplate(t *testing.T
 				s.Cluster.Spec.ClusterNetwork.Pods.CidrBlocks = []string{"192.168.0.0/16"}
 				s.Cluster.Spec.ClusterNetwork.Services.CidrBlocks = []string{"10.128.0.0/12"}
 				s.Cluster.Spec.ControlPlaneConfiguration.Count = 3
-				s.VersionsBundle = versionsBundle
+				s.VersionsBundles["1.19"] = versionsBundle
 				s.Cluster.Spec.ExternalEtcdConfiguration = &v1alpha1.ExternalEtcdConfiguration{Count: 3}
 				s.Cluster.Spec.WorkerNodeGroupConfigurations = []v1alpha1.WorkerNodeGroupConfiguration{{Count: ptr.Int(3), MachineGroupRef: &v1alpha1.Ref{Name: "test-cluster"}, Name: "md-0"}}
 
@@ -289,7 +289,7 @@ func TestProviderGenerateDeploymentFileSuccessUpdateMachineTemplate(t *testing.T
 				s.Cluster.Spec.ClusterNetwork.Pods.CidrBlocks = []string{"192.168.0.0/16"}
 				s.Cluster.Spec.ClusterNetwork.Services.CidrBlocks = []string{"10.128.0.0/12"}
 				s.Cluster.Spec.ControlPlaneConfiguration.Count = 3
-				s.VersionsBundle = versionsBundle
+				s.VersionsBundles["1.19"] = versionsBundle
 				s.Cluster.Spec.ExternalEtcdConfiguration = &v1alpha1.ExternalEtcdConfiguration{Count: 3}
 				s.Cluster.Spec.WorkerNodeGroupConfigurations = []v1alpha1.WorkerNodeGroupConfiguration{{Count: ptr.Int(3), MachineGroupRef: &v1alpha1.Ref{Name: "test-cluster"}, Name: "md-0"}}
 				s.OIDCConfig = &v1alpha1.OIDCConfig{
@@ -320,7 +320,7 @@ func TestProviderGenerateDeploymentFileSuccessUpdateMachineTemplate(t *testing.T
 				s.Cluster.Spec.ClusterNetwork.Pods.CidrBlocks = []string{"192.168.0.0/16"}
 				s.Cluster.Spec.ClusterNetwork.Services.CidrBlocks = []string{"10.128.0.0/12"}
 				s.Cluster.Spec.ControlPlaneConfiguration.Count = 3
-				s.VersionsBundle = versionsBundle
+				s.VersionsBundles["1.19"] = versionsBundle
 				s.Cluster.Spec.ExternalEtcdConfiguration = &v1alpha1.ExternalEtcdConfiguration{Count: 3}
 				s.Cluster.Spec.WorkerNodeGroupConfigurations = []v1alpha1.WorkerNodeGroupConfiguration{{Count: ptr.Int(3), MachineGroupRef: &v1alpha1.Ref{Name: "test-cluster"}, Name: "md-0", AutoScalingConfiguration: &v1alpha1.AutoScalingConfiguration{MinCount: 3, MaxCount: 5}}}
 			}),
@@ -393,7 +393,7 @@ func TestProviderGenerateDeploymentFileSuccessUpdateKubeadmConfigTemplate(t *tes
 	clusterSpec.Cluster.Spec.ClusterNetwork.Services.CidrBlocks = []string{"10.128.0.0/12"}
 	clusterSpec.Cluster.Spec.ControlPlaneConfiguration.Count = 3
 	clusterSpec.Cluster.Spec.ControlPlaneConfiguration.Taints = cpTaints
-	clusterSpec.VersionsBundle = versionsBundle
+	clusterSpec.VersionsBundles["1.19"] = versionsBundle
 	clusterSpec.Cluster.Spec.ExternalEtcdConfiguration = &v1alpha1.ExternalEtcdConfiguration{Count: 3}
 	clusterSpec.Cluster.Spec.WorkerNodeGroupConfigurations = []v1alpha1.WorkerNodeGroupConfiguration{{Count: ptr.Int(3), MachineGroupRef: &v1alpha1.Ref{Name: "test-cluster"}, Name: "md-0"}}
 
@@ -442,7 +442,7 @@ func TestProviderGenerateDeploymentFileSuccessNotUpdateMachineTemplate(t *testin
 	client := dockerMocks.NewMockProviderClient(mockCtrl)
 	kubectl := dockerMocks.NewMockProviderKubectlClient(mockCtrl)
 	clusterSpec := test.NewClusterSpec()
-	clusterSpec.Cluster.Spec.KubernetesVersion = v1alpha1.Kube122
+	clusterSpec.Cluster.Spec.KubernetesVersion = v1alpha1.Kube119
 	clusterSpec.Cluster.Spec.ClusterNetwork.Pods.CidrBlocks = []string{"192.168.0.0/16"}
 	clusterSpec.Cluster.Spec.ClusterNetwork.Services.CidrBlocks = []string{"10.128.0.0/12"}
 	clusterSpec.Cluster.Spec.WorkerNodeGroupConfigurations = []v1alpha1.WorkerNodeGroupConfiguration{{Count: ptr.Int(0), MachineGroupRef: &v1alpha1.Ref{Name: "fluxTestCluster"}, Name: "md-0"}}
@@ -505,7 +505,7 @@ func TestGetInfrastructureBundleSuccess(t *testing.T) {
 			testName: "create overrides layer",
 			clusterSpec: test.NewClusterSpec(func(s *cluster.Spec) {
 				s.Cluster.Name = "test-cluster"
-				s.VersionsBundle = versionsBundle
+				s.VersionsBundles["1.19"] = versionsBundle
 			}),
 		},
 	}
@@ -592,10 +592,10 @@ func TestChangeDiffNoChange(t *testing.T) {
 func TestChangeDiffWithChange(t *testing.T) {
 	tt := newTest(t)
 	clusterSpec := test.NewClusterSpec(func(s *cluster.Spec) {
-		s.VersionsBundle.Docker.Version = "v0.3.18"
+		s.VersionsBundles["1.19"].Docker.Version = "v0.3.18"
 	})
 	newClusterSpec := test.NewClusterSpec(func(s *cluster.Spec) {
-		s.VersionsBundle.Docker.Version = "v0.3.19"
+		s.VersionsBundles["1.19"].Docker.Version = "v0.3.19"
 	})
 
 	wantDiff := &types.ComponentChangeDiff{
@@ -622,7 +622,7 @@ func TestProviderGenerateCAPISpecForCreateWithPodIAMConfig(t *testing.T) {
 		s.Cluster.Spec.ClusterNetwork.Pods.CidrBlocks = []string{"192.168.0.0/16"}
 		s.Cluster.Spec.ClusterNetwork.Services.CidrBlocks = []string{"10.128.0.0/12"}
 		s.Cluster.Spec.ControlPlaneConfiguration.Count = 1
-		s.VersionsBundle = versionsBundle
+		s.VersionsBundles["1.19"] = versionsBundle
 		s.Cluster.Spec.ExternalEtcdConfiguration = &v1alpha1.ExternalEtcdConfiguration{Count: 3}
 		s.Cluster.Spec.WorkerNodeGroupConfigurations = []v1alpha1.WorkerNodeGroupConfiguration{{Count: ptr.Int(3), MachineGroupRef: &v1alpha1.Ref{Name: "test-cluster"}}}
 	})
@@ -659,7 +659,7 @@ func TestProviderGenerateCAPISpecForCreateWithStackedEtcd(t *testing.T) {
 		s.Cluster.Spec.ClusterNetwork.Pods.CidrBlocks = []string{"192.168.0.0/16"}
 		s.Cluster.Spec.ClusterNetwork.Services.CidrBlocks = []string{"10.128.0.0/12"}
 		s.Cluster.Spec.ControlPlaneConfiguration.Count = 1
-		s.VersionsBundle = versionsBundle
+		s.VersionsBundles["1.19"] = versionsBundle
 		s.Cluster.Spec.WorkerNodeGroupConfigurations = []v1alpha1.WorkerNodeGroupConfiguration{{Count: ptr.Int(3), MachineGroupRef: &v1alpha1.Ref{Name: "test-cluster"}}}
 	})
 
@@ -691,11 +691,10 @@ func TestDockerTemplateBuilderGenerateCAPISpecControlPlane(t *testing.T) {
 		wantErr     error
 	}{
 		{
-			name: "kube 122 test",
+			name: "kube 119 test",
 			args: args{
 				clusterSpec: test.NewClusterSpec(func(s *cluster.Spec) {
 					s.Cluster.Name = "test-cluster"
-					s.Cluster.Spec.KubernetesVersion = "1.22"
 				}),
 				buildOptions: nil,
 			},
@@ -706,6 +705,7 @@ func TestDockerTemplateBuilderGenerateCAPISpecControlPlane(t *testing.T) {
 			args: args{
 				clusterSpec: test.NewClusterSpec(func(s *cluster.Spec) {
 					s.Cluster.Name = "test-cluster"
+					s.Cluster.Spec.KubernetesVersion = ""
 				}),
 				buildOptions: nil,
 			},
@@ -743,7 +743,7 @@ func TestProviderGenerateDeploymentFileForSingleNodeCluster(t *testing.T) {
 		s.Cluster.Spec.ClusterNetwork.Pods.CidrBlocks = []string{"192.168.0.0/16"}
 		s.Cluster.Spec.ClusterNetwork.Services.CidrBlocks = []string{"10.128.0.0/12"}
 		s.Cluster.Spec.ControlPlaneConfiguration.Count = 1
-		s.VersionsBundle = versionsBundle
+		s.VersionsBundles["1.21"] = versionsBundle
 		s.Cluster.Spec.WorkerNodeGroupConfigurations = nil
 	})
 
@@ -779,6 +779,7 @@ func TestDockerTemplateBuilderGenerateCAPISpecWorkers(t *testing.T) {
 			args: args{
 				clusterSpec: test.NewClusterSpec(func(s *cluster.Spec) {
 					s.Cluster.Name = "test-cluster"
+					s.Cluster.Spec.KubernetesVersion = ""
 				}),
 			},
 			wantErr: fmt.Errorf("error building template map for MD "),
@@ -866,12 +867,12 @@ func TestDockerGenerateDeploymentFileWithMirrorAndCertConfig(t *testing.T) {
 		t.Fatalf("failed to generate cluster api spec contents: %v", err)
 	}
 
-	fmt.Println("CP template starts")
-	fmt.Println(string(cp))
-	fmt.Println("CP template ends")
-	fmt.Println("MD template starts")
-	fmt.Println(string(md))
-	fmt.Println("MDtemplate ends")
+	// fmt.Println("CP template starts")
+	// fmt.Println(string(cp))
+	// fmt.Println("CP template ends")
+	// fmt.Println("MD template starts")
+	// fmt.Println(string(md))
+	// fmt.Println("MDtemplate ends")
 	test.AssertContentToFile(t, string(cp), "testdata/expected_results_mirror_with_cert_config_cp.yaml")
 	test.AssertContentToFile(t, string(md), "testdata/expected_results_mirror_with_cert_config_md.yaml")
 }

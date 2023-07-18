@@ -848,7 +848,11 @@ func (p *vsphereProvider) PostWorkloadInit(ctx context.Context, cluster *types.C
 }
 
 func (p *vsphereProvider) Version(clusterSpec *cluster.Spec) string {
-	return clusterSpec.VersionsBundle.VSphere.Version
+	vb, err := clusterSpec.GetCPVersionsBundle()
+	if err != nil {
+		return ""
+	}
+	return vb.VSphere.Version
 }
 
 func (p *vsphereProvider) EnvMap(_ *cluster.Spec) (map[string]string, error) {
@@ -870,7 +874,10 @@ func (p *vsphereProvider) GetDeployments() map[string][]string {
 }
 
 func (p *vsphereProvider) GetInfrastructureBundle(clusterSpec *cluster.Spec) *types.InfrastructureBundle {
-	bundle := clusterSpec.VersionsBundle
+	bundle, err := clusterSpec.GetCPVersionsBundle()
+	if err != nil {
+		return nil
+	}
 	folderName := fmt.Sprintf("infrastructure-vsphere/%s/", bundle.VSphere.Version)
 
 	infraBundle := types.InfrastructureBundle{
@@ -1056,14 +1063,18 @@ func (p *vsphereProvider) secretContentsChanged(ctx context.Context, workloadClu
 }
 
 func (p *vsphereProvider) ChangeDiff(currentSpec, newSpec *cluster.Spec) *types.ComponentChangeDiff {
-	if currentSpec.VersionsBundle.VSphere.Version == newSpec.VersionsBundle.VSphere.Version {
+	cvb, nvb, err := cluster.GetOldAndNewCPVersionBundle(currentSpec, newSpec)
+	if err != nil {
+		return nil
+	}
+	if cvb.VSphere.Version == nvb.VSphere.Version {
 		return nil
 	}
 
 	return &types.ComponentChangeDiff{
 		ComponentName: constants.VSphereProviderName,
-		NewVersion:    newSpec.VersionsBundle.VSphere.Version,
-		OldVersion:    currentSpec.VersionsBundle.VSphere.Version,
+		NewVersion:    nvb.VSphere.Version,
+		OldVersion:    cvb.VSphere.Version,
 	}
 }
 
@@ -1075,15 +1086,19 @@ func cpiResourceSetName(clusterSpec *cluster.Spec) string {
 	return fmt.Sprintf("%s-cpi", clusterSpec.Cluster.Name)
 }
 
-func (p *vsphereProvider) UpgradeNeeded(ctx context.Context, newSpec, currentSpec *cluster.Spec, cluster *types.Cluster) (bool, error) {
-	newV, oldV := newSpec.VersionsBundle.VSphere, currentSpec.VersionsBundle.VSphere
+func (p *vsphereProvider) UpgradeNeeded(ctx context.Context, newSpec, currentSpec *cluster.Spec, c *types.Cluster) (bool, error) {
+	cvb, nvb, err := cluster.GetOldAndNewCPVersionBundle(currentSpec, newSpec)
+	if err != nil {
+		return false, err
+	}
+	newV, oldV := nvb.VSphere, cvb.VSphere
 
 	if newV.Manager.ImageDigest != oldV.Manager.ImageDigest ||
 		newV.KubeVip.ImageDigest != oldV.KubeVip.ImageDigest {
 		return true, nil
 	}
 	cc := currentSpec.Cluster
-	existingVdc, err := p.providerKubectlClient.GetEksaVSphereDatacenterConfig(ctx, cc.Spec.DatacenterRef.Name, cluster.KubeconfigFile, newSpec.Cluster.Namespace)
+	existingVdc, err := p.providerKubectlClient.GetEksaVSphereDatacenterConfig(ctx, cc.Spec.DatacenterRef.Name, c.KubeconfigFile, newSpec.Cluster.Namespace)
 	if err != nil {
 		return false, err
 	}
@@ -1092,7 +1107,7 @@ func (p *vsphereProvider) UpgradeNeeded(ctx context.Context, newSpec, currentSpe
 		return true, nil
 	}
 
-	machineConfigsSpecChanged, err := p.machineConfigsSpecChanged(ctx, cc, cluster, newSpec)
+	machineConfigsSpecChanged, err := p.machineConfigsSpecChanged(ctx, cc, c, newSpec)
 	if err != nil {
 		return false, err
 	}

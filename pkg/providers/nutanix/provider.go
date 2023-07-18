@@ -8,6 +8,8 @@ import (
 	"os"
 	"reflect"
 
+	etcdv1beta1 "github.com/aws/etcdadm-controller/api/v1beta1"
+
 	"github.com/aws/eks-anywhere/pkg/api/v1alpha1"
 	"github.com/aws/eks-anywhere/pkg/bootstrapper"
 	"github.com/aws/eks-anywhere/pkg/cluster"
@@ -392,6 +394,46 @@ func NeedsNewKubeadmConfigTemplate(newWorkerNodeGroup *v1alpha1.WorkerNodeGroupC
 		!v1alpha1.UsersSliceEqual(oldWorkerNodeNmc.Spec.Users, newWorkerNodeNmc.Spec.Users)
 }
 
+func needsNewEtcdTemplate(oldSpec, newSpec *cluster.Spec, oldNmc, newNmc *v1alpha1.NutanixMachineConfig) bool {
+	if oldSpec.Cluster.Spec.KubernetesVersion != newSpec.Cluster.Spec.KubernetesVersion {
+		return true
+	}
+	if oldSpec.Bundles.Spec.Number != newSpec.Bundles.Spec.Number {
+		return true
+	}
+
+	return AnyImmutableFieldChanged(oldNmc, newNmc)
+}
+
+func (p *Provider) getEtcdTemplateNameForCAPISpecUpgrade(ctx context.Context, eksaCluster *v1alpha1.Cluster, currentSpec, newClusterSpec *cluster.Spec, bootstrapCluster, workloadCluster *types.Cluster, ndc *v1alpha1.NutanixDatacenterConfig, clusterName string) (string, error) {
+	etcdMachineConfig := newClusterSpec.NutanixMachineConfigs[newClusterSpec.Cluster.Spec.ExternalEtcdConfiguration.MachineGroupRef.Name]
+	etcdMachineVms, err := p.kubectlClient.GetEksaNutanixMachineConfig(ctx, eksaCluster.Spec.ExternalEtcdConfiguration.MachineGroupRef.Name, workloadCluster.KubeconfigFile, newClusterSpec.Cluster.Namespace)
+	if err != nil {
+		return "", err
+	}
+
+	if !needsNewEtcdTemplate(currentSpec, newClusterSpec, etcdMachineVms, etcdMachineConfig) {
+		etcdadmCluster, err := p.kubectlClient.GetEtcdadmCluster(ctx, workloadCluster, clusterName, executables.WithCluster(bootstrapCluster), executables.WithNamespace(constants.EksaSystemNamespace))
+		if err != nil {
+			return "", err
+		}
+		return etcdadmCluster.Spec.InfrastructureTemplate.Name, nil
+	}
+	/*
+		During a cluster upgrade, etcd machines need to be upgraded first, so that the etcd machines with new spec get created and can be used by controlplane machines
+		as etcd endpoints. KCP rollout should not start until then. As a temporary solution in the absence of static etcd endpoints, we annotate the etcd cluster as "upgrading",
+		so that KCP checks this annotation and does not proceed if etcd cluster is upgrading. The etcdadm controller removes this annotation once the etcd upgrade is complete.
+	*/
+	err = p.kubectlClient.UpdateAnnotation(ctx, "etcdadmcluster", fmt.Sprintf("%s-etcd", clusterName),
+		map[string]string{etcdv1beta1.UpgradeInProgressAnnotation: "true"},
+		executables.WithCluster(bootstrapCluster),
+		executables.WithNamespace(constants.EksaSystemNamespace))
+	if err != nil {
+		return "", err
+	}
+	return common.EtcdMachineTemplateName(clusterName, p.templateBuilder.now), nil
+}
+
 func (p *Provider) GenerateCAPISpecForUpgrade(ctx context.Context, bootstrapCluster, workloadCluster *types.Cluster, currentSpec, newClusterSpec *cluster.Spec) (controlPlaneSpec, workersSpec []byte, err error) {
 	if err := p.UpdateSecrets(ctx, bootstrapCluster, newClusterSpec); err != nil {
 		return nil, nil, fmt.Errorf("updating Nutanix credentials: %v", err)
@@ -478,6 +520,13 @@ func (p *Provider) GenerateCAPISpecForUpgrade(ctx context.Context, bootstrapClus
 		p.templateBuilder.workerNodeGroupMachineSpecs[workerNodeGroupConfiguration.MachineGroupRef.Name] = p.machineConfigs[workerNodeGroupConfiguration.MachineGroupRef.Name].Spec
 	}
 
+	if newClusterSpec.Cluster.Spec.ExternalEtcdConfiguration != nil {
+		etcdTemplateName, err = p.getEtcdTemplateNameForCAPISpecUpgrade(ctx, eksaCluster, currentSpec, newClusterSpec, bootstrapCluster, workloadCluster, ndc, clusterName)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
 	cpOpt := func(values map[string]interface{}) {
 		values["controlPlaneTemplateName"] = controlPlaneTemplateName
 		values["etcdTemplateName"] = etcdTemplateName
@@ -499,6 +548,7 @@ func (p *Provider) GenerateStorageClass() []byte {
 	return nil
 }
 
+// GenerateMHC generates MHC.
 func (p *Provider) GenerateMHC(_ *cluster.Spec) ([]byte, error) {
 	data := map[string]string{
 		"clusterName":         p.clusterConfig.Name,
@@ -517,8 +567,13 @@ func (p *Provider) UpdateKubeConfig(content *[]byte, clusterName string) error {
 	return nil
 }
 
+// Version returns the nutanix version from the VersionsBundle.
 func (p *Provider) Version(clusterSpec *cluster.Spec) string {
-	return clusterSpec.VersionsBundle.Nutanix.Version
+	vb, err := clusterSpec.GetCPVersionsBundle()
+	if err != nil {
+		return ""
+	}
+	return vb.Nutanix.Version
 }
 
 func (p *Provider) EnvMap(_ *cluster.Spec) (map[string]string, error) {
@@ -541,7 +596,10 @@ func (p *Provider) GetDeployments() map[string][]string {
 }
 
 func (p *Provider) GetInfrastructureBundle(clusterSpec *cluster.Spec) *types.InfrastructureBundle {
-	bundle := clusterSpec.VersionsBundle
+	bundle, err := clusterSpec.GetCPVersionsBundle()
+	if err != nil {
+		return nil
+	}
 	manifests := []releasev1alpha1.Manifest{
 		bundle.Nutanix.Components,
 		bundle.Nutanix.Metadata,
@@ -559,6 +617,7 @@ func (p *Provider) DatacenterConfig(_ *cluster.Spec) providers.DatacenterConfig 
 	return p.datacenterConfig
 }
 
+// MachineConfigs returns a MachineConfig slice.
 func (p *Provider) MachineConfigs(_ *cluster.Spec) []providers.MachineConfig {
 	configs := make(map[string]providers.MachineConfig, len(p.machineConfigs))
 	controlPlaneMachineName := p.clusterConfig.Spec.ControlPlaneConfiguration.MachineGroupRef.Name
@@ -606,14 +665,18 @@ func (p *Provider) ValidateNewSpec(_ context.Context, _ *types.Cluster, _ *clust
 }
 
 func (p *Provider) ChangeDiff(currentSpec, newSpec *cluster.Spec) *types.ComponentChangeDiff {
-	if currentSpec.VersionsBundle.Nutanix.Version == newSpec.VersionsBundle.Nutanix.Version {
+	cvb, nvb, err := cluster.GetOldAndNewCPVersionBundle(currentSpec, newSpec)
+	if err != nil {
+		return nil
+	}
+	if cvb.Nutanix.Version == nvb.Nutanix.Version {
 		return nil
 	}
 
 	return &types.ComponentChangeDiff{
 		ComponentName: constants.NutanixProviderName,
-		NewVersion:    newSpec.VersionsBundle.Nutanix.Version,
-		OldVersion:    currentSpec.VersionsBundle.Nutanix.Version,
+		NewVersion:    nvb.Nutanix.Version,
+		OldVersion:    cvb.Nutanix.Version,
 	}
 }
 

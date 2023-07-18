@@ -1,6 +1,7 @@
 package cluster
 
 import (
+	eksdv1 "github.com/aws/eks-distro-build-tooling/release/api/v1alpha1"
 	"github.com/pkg/errors"
 
 	"github.com/aws/eks-anywhere/pkg/api/v1alpha1"
@@ -84,27 +85,41 @@ func (b FileSpecBuilder) Build(clusterConfigURL string) (*Spec, error) {
 	config.Cluster.Spec.BundlesRef.Namespace = bundlesManifest.Namespace
 	config.Cluster.Spec.BundlesRef.APIVersion = releasev1.GroupVersion.String()
 
-	eksd, err := getEksdReleases(config.Cluster.Spec.KubernetesVersion, bundlesManifest, b.reader)
+	eksdReleases, err := getAllEksdReleases(config.Cluster, bundlesManifest, b.reader)
 	if err != nil {
 		return nil, err
 	}
 
-	workerEksd := make(map[string]*eksdv1.Release)
-	for _, wng := range config.Cluster.Spec.WorkerNodeGroupConfigurations {
+	return NewSpec(config, bundlesManifest, eksdReleases)
+}
+
+func getAllEksdReleases(cluster *v1alpha1.Cluster, bundlesManifest *releasev1.Bundles, reader bundles.Reader) (map[v1alpha1.KubernetesVersion]*eksdv1.Release, error) {
+	m := make(map[v1alpha1.KubernetesVersion]*eksdv1.Release)
+	version := cluster.Spec.KubernetesVersion
+	eksd, err := getEksdReleases(version, bundlesManifest, reader)
+	if err != nil {
+		return nil, err
+	}
+	m[version] = eksd
+
+	for _, wng := range cluster.Spec.WorkerNodeGroupConfigurations {
 		if wng.KubernetesVersion != nil {
-			wer, err := getEksdReleases(*wng.KubernetesVersion, bundlesManifest, b.reader)
+			version = *wng.KubernetesVersion
+			if _, ok := m[version]; ok {
+				continue
+			}
+			eksd, err = getEksdReleases(version, bundlesManifest, reader)
 			if err != nil {
 				return nil, err
 			}
-			workerEksd[wng.Name] = wer
+			m[version] = eksd
 		}
 	}
-
-	return NewSpec(config, bundlesManifest, eksd, workerEksd)
+	return m, nil
 }
 
-func getEksdReleases(kVersion v1alpha1.KubernetesVersion, bundlesManifest *releasev1.Bundles, reader bundles.Reader) (*eksdv1.Release, error) {
-	versionsBundle, err := GetVersionsBundle(kVersion, bundlesManifest)
+func getEksdReleases(version v1alpha1.KubernetesVersion, bundlesManifest *releasev1.Bundles, reader bundles.Reader) (*eksdv1.Release, error) {
+	versionsBundle, err := GetVersionsBundle(version, bundlesManifest)
 	if err != nil {
 		return nil, err
 	}

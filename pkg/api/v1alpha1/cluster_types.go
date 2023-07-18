@@ -3,7 +3,6 @@ package v1alpha1
 import (
 	"fmt"
 	"net"
-	"strconv"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -406,83 +405,67 @@ type WorkerNodeGroupConfiguration struct {
 	// UpgradeRolloutStrategy determines the rollout strategy to use for rolling upgrades
 	// and related parameters/knobs
 	UpgradeRolloutStrategy *WorkerNodesUpgradeRolloutStrategy `json:"upgradeRolloutStrategy,omitempty"`
-	// KuberenetesVersion is the kubernetes version for worker nodes. Defaults to the cluster spec's KubernetesVersion.
+	// KuberenetesVersion defines the version for worker nodes. If not set, the top level spec kubernetesVersion will be used.
 	KubernetesVersion *KubernetesVersion `json:"kubernetesVersion,omitempty"`
 }
 
-func generateWorkerNodeGroupKey(c WorkerNodeGroupConfiguration) (key string) {
-	key = c.Name
-	if c.MachineGroupRef != nil {
-		key += c.MachineGroupRef.Kind + c.MachineGroupRef.Name
+// Equal compares two WorkerNodeGroupConfigurations.
+func (w WorkerNodeGroupConfiguration) Equal(other WorkerNodeGroupConfiguration) bool {
+	return w.Name == other.Name &&
+		intPtrEqual(w.Count, other.Count) &&
+		w.AutoScalingConfiguration.Equal(other.AutoScalingConfiguration) &&
+		w.MachineGroupRef.Equal(other.MachineGroupRef) &&
+		w.KubernetesVersion.Equal(other.KubernetesVersion) &&
+		TaintsSliceEqual(w.Taints, other.Taints) &&
+		MapEqual(w.Labels, other.Labels) &&
+		w.UpgradeRolloutStrategy.Equal(other.UpgradeRolloutStrategy)
+}
+
+// Equal compares two KubernetesVersions.
+func (k *KubernetesVersion) Equal(other *KubernetesVersion) bool {
+	if k == other {
+		return true
 	}
-	if c.AutoScalingConfiguration != nil {
-		key += "autoscaling" + strconv.Itoa(c.AutoScalingConfiguration.MaxCount) + strconv.Itoa(c.AutoScalingConfiguration.MinCount)
+
+	if k == nil || other == nil {
+		return false
 	}
-	if c.Count == nil {
-		return "nil" + key
+
+	return *k == *other
+}
+
+func intPtrEqual(a, b *int) bool {
+	if a == b {
+		return true
 	}
-	return strconv.Itoa(*c.Count) + key
+
+	if a == nil || b == nil {
+		return false
+	}
+
+	return *a == *b
 }
 
 func WorkerNodeGroupConfigurationsSliceEqual(a, b []WorkerNodeGroupConfiguration) bool {
 	if len(a) != len(b) {
 		return false
 	}
-	m := make(map[string]int, len(a))
-	for _, v := range a {
-		m[generateWorkerNodeGroupKey(v)]++
+
+	m := make(map[string]WorkerNodeGroupConfiguration, len(a))
+	for _, w := range a {
+		m[w.Name] = w
 	}
-	for _, v := range b {
-		k := generateWorkerNodeGroupKey(v)
-		if _, ok := m[k]; !ok {
+	for _, wb := range b {
+		wa, ok := m[wb.Name]
+		if !ok {
 			return false
 		}
-		m[k] -= 1
-		if m[k] == 0 {
-			delete(m, k)
+		if !wb.Equal(wa) {
+			return false
 		}
 	}
-	if len(m) != 0 {
-		return false
-	}
 
-	if !WorkerNodeGroupConfigurationsKubeVersionEqual(a, b) {
-		return false
-	}
-
-	return WorkerNodeGroupConfigurationSliceTaintsEqual(a, b) && WorkerNodeGroupConfigurationsLabelsMapEqual(a, b)
-}
-
-// WorkerNodeGroupConfigurationsKubeVersionEqual checks to see if all kubernetesVersion are equal in old and new worker node group conig.
-func WorkerNodeGroupConfigurationsKubeVersionEqual(a, b []WorkerNodeGroupConfiguration) bool {
-	m := make(map[string]*KubernetesVersion, len(a))
-	for _, nodeGroup := range a {
-		m[nodeGroup.Name] = nodeGroup.KubernetesVersion
-	}
-
-	for _, nodeGroup := range b {
-		if _, ok := m[nodeGroup.Name]; !ok {
-			// this method is not concerned with added/removed node groups,
-			// only with the comparison of KubernetesVersion on existing node groups
-			// if a node group is present in a but not b, or vise versa, it's immaterial
-			continue
-		} else {
-			n := nodeGroup.KubernetesVersion
-			o := m[nodeGroup.Name]
-
-			if !kubeVersionPtrEqual(n, o) {
-				return false
-			}
-		}
-	}
 	return true
-}
-
-func kubeVersionPtrEqual(n, o *KubernetesVersion) bool {
-	if n == nil || o == nil {
-		return n == o
-	}
-	return *n == *o
 }
 
 func WorkerNodeGroupConfigurationKubeVersionUnchanged(o, n *WorkerNodeGroupConfiguration, oldTopVersion, newTopVersion KubernetesVersion) bool {
@@ -496,7 +479,7 @@ func WorkerNodeGroupConfigurationKubeVersionUnchanged(o, n *WorkerNodeGroupConfi
 		newVersion = &newTopVersion
 	}
 
-	return kubeVersionPtrEqual(newVersion, oldVersion)
+	return newVersion.Equal(oldVersion)
 }
 
 func WorkerNodeGroupConfigurationSliceTaintsEqual(a, b []WorkerNodeGroupConfiguration) bool {
@@ -1185,6 +1168,19 @@ type AutoScalingConfiguration struct {
 	MaxCount int `json:"maxCount,omitempty"`
 }
 
+// Equal compares two AutoScalingConfigurations.
+func (a *AutoScalingConfiguration) Equal(other *AutoScalingConfiguration) bool {
+	if a == other {
+		return true
+	}
+
+	if a == nil || other == nil {
+		return false
+	}
+
+	return a.MaxCount == other.MaxCount && a.MinCount == other.MinCount
+}
+
 // ControlPlaneUpgradeRolloutStrategy indicates rollout strategy for cluster.
 type ControlPlaneUpgradeRolloutStrategy struct {
 	Type          string                          `json:"type,omitempty"`
@@ -1200,6 +1196,19 @@ type ControlPlaneRollingUpdateParams struct {
 type WorkerNodesUpgradeRolloutStrategy struct {
 	Type          string                         `json:"type,omitempty"`
 	RollingUpdate WorkerNodesRollingUpdateParams `json:"rollingUpdate,omitempty"`
+}
+
+// Equal compares two WorkerNodesUpgradeRolloutStrategies.
+func (w *WorkerNodesUpgradeRolloutStrategy) Equal(other *WorkerNodesUpgradeRolloutStrategy) bool {
+	if w == other {
+		return true
+	}
+
+	if w == nil || other == nil {
+		return false
+	}
+
+	return w.Type == other.Type && w.RollingUpdate == other.RollingUpdate
 }
 
 // WorkerNodesRollingUpdateParams is API for rolling update strategy knobs.

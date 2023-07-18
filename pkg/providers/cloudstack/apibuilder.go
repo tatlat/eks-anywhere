@@ -19,22 +19,30 @@ import (
 // CloudStackMachineTemplateKind defines the K8s Kind corresponding with the MachineTemplate.
 const CloudStackMachineTemplateKind = "CloudStackMachineTemplate"
 
-func machineDeployment(clusterSpec *cluster.Spec, workerNodeGroupConfig v1alpha1.WorkerNodeGroupConfiguration, kubeadmConfigTemplate *bootstrapv1.KubeadmConfigTemplate, cloudstackMachineTemplate *cloudstackv1.CloudStackMachineTemplate) clusterv1.MachineDeployment {
-	return *clusterapi.MachineDeployment(clusterSpec, workerNodeGroupConfig, kubeadmConfigTemplate, cloudstackMachineTemplate)
+func machineDeployment(clusterSpec *cluster.Spec, workerNodeGroupConfig v1alpha1.WorkerNodeGroupConfiguration, kubeadmConfigTemplate *bootstrapv1.KubeadmConfigTemplate, cloudstackMachineTemplate *cloudstackv1.CloudStackMachineTemplate) (*clusterv1.MachineDeployment, error) {
+	md, err := clusterapi.MachineDeployment(clusterSpec, workerNodeGroupConfig, kubeadmConfigTemplate, cloudstackMachineTemplate)
+	if err != nil {
+		return nil, err
+	}
+	return md, nil
 }
 
 // MachineDeployments returns generated CAPI MachineDeployment objects for a given cluster spec.
-func MachineDeployments(clusterSpec *cluster.Spec, kubeadmConfigTemplates map[string]*bootstrapv1.KubeadmConfigTemplate, machineTemplates map[string]*cloudstackv1.CloudStackMachineTemplate) map[string]*clusterv1.MachineDeployment {
+func MachineDeployments(clusterSpec *cluster.Spec, kubeadmConfigTemplates map[string]*bootstrapv1.KubeadmConfigTemplate, machineTemplates map[string]*cloudstackv1.CloudStackMachineTemplate) (map[string]*clusterv1.MachineDeployment, error) {
 	m := make(map[string]*clusterv1.MachineDeployment, len(clusterSpec.Cluster.Spec.WorkerNodeGroupConfigurations))
 
 	for _, workerNodeGroupConfig := range clusterSpec.Cluster.Spec.WorkerNodeGroupConfigurations {
-		deployment := machineDeployment(clusterSpec, workerNodeGroupConfig,
+		deployment, err := machineDeployment(clusterSpec, workerNodeGroupConfig,
 			kubeadmConfigTemplates[workerNodeGroupConfig.Name],
 			machineTemplates[workerNodeGroupConfig.Name],
 		)
-		m[workerNodeGroupConfig.Name] = &deployment
+		if err != nil {
+			return nil, err
+		}
+
+		m[workerNodeGroupConfig.Name] = deployment
 	}
-	return m
+	return m, nil
 }
 
 func generateMachineTemplateAnnotations(machineConfig *v1alpha1.CloudStackMachineConfigSpec) map[string]string {

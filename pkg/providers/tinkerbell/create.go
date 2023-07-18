@@ -28,9 +28,14 @@ func (p *Provider) BootstrapClusterOpts(_ *cluster.Spec) ([]bootstrapper.Bootstr
 func (p *Provider) PreCAPIInstallOnBootstrap(ctx context.Context, cluster *types.Cluster, clusterSpec *cluster.Spec) error {
 	logger.V(4).Info("Installing Tinkerbell stack on bootstrap cluster")
 
-	err := p.stackInstaller.Install(
+	vb, err := clusterSpec.GetCPVersionsBundle()
+	if err != nil {
+		return nil
+	}
+
+	err = p.stackInstaller.Install(
 		ctx,
-		clusterSpec.VersionsBundle.Tinkerbell,
+		vb.Tinkerbell,
 		p.tinkerbellIP,
 		cluster.KubeconfigFile,
 		p.datacenterConfig.Spec.HookImagesURLPath,
@@ -74,9 +79,14 @@ func (p *Provider) PostWorkloadInit(ctx context.Context, cluster *types.Cluster,
 		logger.Info("Warning: Skipping load balancer deployment. Please install and configure a load balancer once the cluster is created.")
 	}
 
-	err := p.stackInstaller.Install(
+	vb, err := clusterSpec.GetCPVersionsBundle()
+	if err != nil {
+		return nil
+	}
+
+	err = p.stackInstaller.Install(
 		ctx,
-		clusterSpec.VersionsBundle.Tinkerbell,
+		vb.Tinkerbell,
 		p.templateBuilder.datacenterSpec.TinkerbellIP,
 		cluster.KubeconfigFile,
 		p.datacenterConfig.Spec.HookImagesURLPath,

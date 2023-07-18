@@ -24,7 +24,7 @@ func TestNewSpecError(t *testing.T) {
 		name        string
 		config      *cluster.Config
 		bundles     *releasev1.Bundles
-		eksdRelease *eksdv1.Release
+		eksdRelease map[anywherev1.KubernetesVersion]*eksdv1.Release
 		error       string
 	}{
 		{
@@ -41,30 +41,10 @@ func TestNewSpecError(t *testing.T) {
 					Number: 2,
 				},
 			},
-			eksdRelease: &eksdv1.Release{},
-			error:       "kubernetes version 1.24 is not supported by bundles manifest 2",
-		},
-		{
-			name: "invalid eks-d release",
-			config: &cluster.Config{
-				Cluster: &anywherev1.Cluster{
-					Spec: anywherev1.ClusterSpec{
-						KubernetesVersion: anywherev1.Kube124,
-					},
-				},
+			eksdRelease: map[anywherev1.KubernetesVersion]*eksdv1.Release{
+				anywherev1.Kube119: {},
 			},
-			bundles: &releasev1.Bundles{
-				Spec: releasev1.BundlesSpec{
-					Number: 2,
-					VersionsBundles: []releasev1.VersionsBundle{
-						{
-							KubeVersion: "1.24",
-						},
-					},
-				},
-			},
-			eksdRelease: &eksdv1.Release{},
-			error:       "is no present in eksd release",
+			error: "kubernetes version 1.24 is not supported by bundles manifest 2",
 		},
 	}
 
@@ -80,10 +60,16 @@ func TestNewSpecError(t *testing.T) {
 
 func TestNewSpecValid(t *testing.T) {
 	g := NewWithT(t)
+	kube124 := anywherev1.KubernetesVersion("1.24")
 	config := &cluster.Config{
 		Cluster: &anywherev1.Cluster{
 			Spec: anywherev1.ClusterSpec{
-				KubernetesVersion: anywherev1.Kube124,
+				KubernetesVersion: kube124,
+				WorkerNodeGroupConfigurations: []anywherev1.WorkerNodeGroupConfiguration{
+					{
+						KubernetesVersion: &kube124,
+					},
+				},
 			},
 		},
 		OIDCConfigs: map[string]*anywherev1.OIDCConfig{
@@ -103,9 +89,9 @@ func TestNewSpecValid(t *testing.T) {
 			},
 		},
 	}
-	eksdRelease := readEksdRelease(t, "testdata/eksd_valid.yaml")
+	eksd := test.EksdReleasesMap()
 
-	spec, err := cluster.NewSpec(config, bundles, eksdRelease, make(map[string]*eksdv1.Release))
+	spec, err := cluster.NewSpec(config, bundles, eksd)
 	g.Expect(err).NotTo(HaveOccurred())
 	g.Expect(spec.AWSIamConfig).NotTo(BeNil())
 	g.Expect(spec.OIDCConfig).NotTo(BeNil())
@@ -119,8 +105,8 @@ func TestSpecDeepCopy(t *testing.T) {
 	config, err := cluster.ParseConfig(yaml)
 	g.Expect(err).To(Succeed())
 	bundles := test.Bundles(t)
-	eksd := test.EksdRelease()
-	spec, err := cluster.NewSpec(config, bundles, eksd, make(map[string]*eksdv1.Release))
+	eksd := test.EksdReleasesMap()
+	spec, err := cluster.NewSpec(config, bundles, eksd)
 	g.Expect(err).To(Succeed())
 
 	g.Expect(spec.DeepCopy()).To(Equal(spec))
@@ -193,18 +179,290 @@ func TestBundlesRefDefaulter(t *testing.T) {
 }
 
 func validateSpecFromSimpleBundle(t *testing.T, gotSpec *cluster.Spec) {
-	validateVersionedRepo(t, gotSpec.VersionsBundle.KubeDistro.Kubernetes, "public.ecr.aws/eks-distro/kubernetes", "v1.19.8-eks-1-19-4")
-	validateVersionedRepo(t, gotSpec.VersionsBundle.KubeDistro.CoreDNS, "public.ecr.aws/eks-distro/coredns", "v1.8.0-eks-1-19-4")
-	validateVersionedRepo(t, gotSpec.VersionsBundle.KubeDistro.Etcd, "public.ecr.aws/eks-distro/etcd-io", "v3.4.14-eks-1-19-4")
-	validateImageURI(t, gotSpec.VersionsBundle.KubeDistro.NodeDriverRegistrar, "public.ecr.aws/eks-distro/kubernetes-csi/node-driver-registrar:v2.1.0-eks-1-19-4")
-	validateImageURI(t, gotSpec.VersionsBundle.KubeDistro.LivenessProbe, "public.ecr.aws/eks-distro/kubernetes-csi/livenessprobe:v2.2.0-eks-1-19-4")
-	validateImageURI(t, gotSpec.VersionsBundle.KubeDistro.ExternalAttacher, "public.ecr.aws/eks-distro/kubernetes-csi/external-attacher:v3.1.0-eks-1-19-4")
-	validateImageURI(t, gotSpec.VersionsBundle.KubeDistro.ExternalProvisioner, "public.ecr.aws/eks-distro/kubernetes-csi/external-provisioner:v2.1.1-eks-1-19-4")
-	validateImageURI(t, gotSpec.VersionsBundle.KubeDistro.EtcdImage, "public.ecr.aws/eks-distro/etcd-io/etcd:v3.4.14-eks-1-19-4")
-	validateImageURI(t, gotSpec.VersionsBundle.KubeDistro.KubeProxy, "public.ecr.aws/eks-distro/kubernetes/kube-proxy:v1.19.8-eks-1-19-4")
-	if gotSpec.VersionsBundle.KubeDistro.EtcdVersion != "3.4.14" {
-		t.Errorf("GetNewSpec() = Spec: Invalid etcd version, got %s, want 3.4.14", gotSpec.VersionsBundle.KubeDistro.EtcdVersion)
+	VersionsBundle, err := gotSpec.GetCPVersionsBundle()
+	if err != nil {
+		t.Errorf("Could not get VersionsBundle")
 	}
+	validateVersionedRepo(t, VersionsBundle.KubeDistro.Kubernetes, "public.ecr.aws/eks-distro/kubernetes", "v1.19.8-eks-1-19-4")
+	validateVersionedRepo(t, VersionsBundle.KubeDistro.CoreDNS, "public.ecr.aws/eks-distro/coredns", "v1.8.0-eks-1-19-4")
+	validateVersionedRepo(t, VersionsBundle.KubeDistro.Etcd, "public.ecr.aws/eks-distro/etcd-io", "v3.4.14-eks-1-19-4")
+	validateImageURI(t, VersionsBundle.KubeDistro.NodeDriverRegistrar, "public.ecr.aws/eks-distro/kubernetes-csi/node-driver-registrar:v2.1.0-eks-1-19-4")
+	validateImageURI(t, VersionsBundle.KubeDistro.LivenessProbe, "public.ecr.aws/eks-distro/kubernetes-csi/livenessprobe:v2.2.0-eks-1-19-4")
+	validateImageURI(t, VersionsBundle.KubeDistro.ExternalAttacher, "public.ecr.aws/eks-distro/kubernetes-csi/external-attacher:v3.1.0-eks-1-19-4")
+	validateImageURI(t, VersionsBundle.KubeDistro.ExternalProvisioner, "public.ecr.aws/eks-distro/kubernetes-csi/external-provisioner:v2.1.1-eks-1-19-4")
+	validateImageURI(t, VersionsBundle.KubeDistro.EtcdImage, "public.ecr.aws/eks-distro/etcd-io/etcd:v3.4.14-eks-1-19-4")
+	validateImageURI(t, VersionsBundle.KubeDistro.KubeProxy, "public.ecr.aws/eks-distro/kubernetes/kube-proxy:v1.19.8-eks-1-19-4")
+	if VersionsBundle.KubeDistro.EtcdVersion != "3.4.14" {
+		t.Errorf("GetNewSpec() = Spec: Invalid etcd version, got %s, want 3.4.14", VersionsBundle.KubeDistro.EtcdVersion)
+	}
+}
+
+func TestKubeDistroImagesErrorEksd(t *testing.T) {
+	g := NewWithT(t)
+	config := &cluster.Config{
+		Cluster: &anywherev1.Cluster{
+			Spec: anywherev1.ClusterSpec{
+				KubernetesVersion: anywherev1.Kube124,
+			},
+		},
+		OIDCConfigs: map[string]*anywherev1.OIDCConfig{
+			"myconfig": {},
+		},
+		AWSIAMConfigs: map[string]*anywherev1.AWSIamConfig{
+			"myconfig": {},
+		},
+	}
+	bundles := &releasev1.Bundles{
+		Spec: releasev1.BundlesSpec{
+			Number: 2,
+			VersionsBundles: []releasev1.VersionsBundle{
+				{
+					KubeVersion: "1.24",
+				},
+			},
+		},
+	}
+	eksd := test.EksdReleasesMap()
+
+	spec, _ := cluster.NewSpec(config, bundles, eksd)
+	images := spec.KubeDistroImages()
+	g.Expect(len(images)).To(BeZero())
+}
+
+func TestKubeDistroImagesErrorVersionsBundle(t *testing.T) {
+	g := NewWithT(t)
+	config := &cluster.Config{
+		Cluster: &anywherev1.Cluster{
+			Spec: anywherev1.ClusterSpec{
+				KubernetesVersion: anywherev1.Kube124,
+			},
+		},
+		OIDCConfigs: map[string]*anywherev1.OIDCConfig{
+			"myconfig": {},
+		},
+		AWSIAMConfigs: map[string]*anywherev1.AWSIamConfig{
+			"myconfig": {},
+		},
+	}
+	bundles := &releasev1.Bundles{
+		Spec: releasev1.BundlesSpec{
+			Number: 2,
+			VersionsBundles: []releasev1.VersionsBundle{
+				{
+					KubeVersion: "1.24",
+				},
+			},
+		},
+	}
+	eksd := test.EksdReleasesMap()
+
+	spec, _ := cluster.NewSpec(config, bundles, eksd)
+	spec.VersionsBundles["1.24"] = nil
+	images := spec.KubeDistroImages()
+	g.Expect(len(images)).To(BeZero())
+}
+
+func TestGetVersionsBundleWorkerError(t *testing.T) {
+	g := NewWithT(t)
+	kube123 := anywherev1.KubernetesVersion("1.23")
+	config := &cluster.Config{
+		Cluster: &anywherev1.Cluster{
+			Spec: anywherev1.ClusterSpec{
+				KubernetesVersion: anywherev1.Kube124,
+				WorkerNodeGroupConfigurations: []anywherev1.WorkerNodeGroupConfiguration{
+					{
+						KubernetesVersion: &kube123,
+					},
+				},
+			},
+		},
+		OIDCConfigs: map[string]*anywherev1.OIDCConfig{
+			"myconfig": {},
+		},
+		AWSIAMConfigs: map[string]*anywherev1.AWSIamConfig{
+			"myconfig": {},
+		},
+	}
+	bundles := &releasev1.Bundles{
+		Spec: releasev1.BundlesSpec{
+			Number: 2,
+			VersionsBundles: []releasev1.VersionsBundle{
+				{
+					KubeVersion: "1.24",
+				},
+			},
+		},
+	}
+	eksd := test.EksdReleasesMap()
+
+	_, err := cluster.NewSpec(config, bundles, eksd)
+	g.Expect(err).ToNot(BeNil())
+}
+
+func TestGetVersionsBundleNotFound(t *testing.T) {
+	g := NewWithT(t)
+	config := &cluster.Config{
+		Cluster: &anywherev1.Cluster{
+			Spec: anywherev1.ClusterSpec{
+				KubernetesVersion: anywherev1.Kube124,
+			},
+		},
+		OIDCConfigs: map[string]*anywherev1.OIDCConfig{
+			"myconfig": {},
+		},
+		AWSIAMConfigs: map[string]*anywherev1.AWSIamConfig{
+			"myconfig": {},
+		},
+	}
+	bundles := &releasev1.Bundles{
+		Spec: releasev1.BundlesSpec{
+			Number: 2,
+			VersionsBundles: []releasev1.VersionsBundle{
+				{
+					KubeVersion: "1.24",
+				},
+			},
+		},
+	}
+	eksd := test.EksdReleasesMap()
+
+	spec, _ := cluster.NewSpec(config, bundles, eksd)
+	_, err := spec.GetVersionBundles("1.22")
+	g.Expect(err).ToNot(BeNil())
+}
+
+func TestGetVersionsBundlesErrorEksdEmpty(t *testing.T) {
+	g := NewWithT(t)
+	kube123 := anywherev1.KubernetesVersion("1.23")
+	config := &cluster.Config{
+		Cluster: &anywherev1.Cluster{
+			Spec: anywherev1.ClusterSpec{
+				KubernetesVersion: anywherev1.Kube124,
+				WorkerNodeGroupConfigurations: []anywherev1.WorkerNodeGroupConfiguration{
+					{
+						KubernetesVersion: &kube123,
+					},
+				},
+			},
+		},
+		OIDCConfigs: map[string]*anywherev1.OIDCConfig{
+			"myconfig": {},
+		},
+		AWSIAMConfigs: map[string]*anywherev1.AWSIamConfig{
+			"myconfig": {},
+		},
+	}
+	bundles := &releasev1.Bundles{
+		Spec: releasev1.BundlesSpec{
+			Number: 2,
+			VersionsBundles: []releasev1.VersionsBundle{
+				{
+					KubeVersion: "1.24",
+				},
+			},
+		},
+	}
+
+	_, err := cluster.NewSpec(config, bundles, map[anywherev1.KubernetesVersion]*eksdv1.Release{})
+	g.Expect(err).ToNot(BeNil())
+}
+
+func TestGetVersionsBundlesErrorInvalidEksd(t *testing.T) {
+	g := NewWithT(t)
+	kube123 := anywherev1.KubernetesVersion("1.23")
+	config := &cluster.Config{
+		Cluster: &anywherev1.Cluster{
+			Spec: anywherev1.ClusterSpec{
+				KubernetesVersion: anywherev1.Kube124,
+				WorkerNodeGroupConfigurations: []anywherev1.WorkerNodeGroupConfiguration{
+					{
+						KubernetesVersion: &kube123,
+					},
+				},
+			},
+		},
+		OIDCConfigs: map[string]*anywherev1.OIDCConfig{
+			"myconfig": {},
+		},
+		AWSIAMConfigs: map[string]*anywherev1.AWSIamConfig{
+			"myconfig": {},
+		},
+	}
+	bundles := &releasev1.Bundles{
+		Spec: releasev1.BundlesSpec{
+			Number: 2,
+			VersionsBundles: []releasev1.VersionsBundle{
+				{
+					KubeVersion: "1.24",
+				},
+			},
+		},
+	}
+	eksd := map[anywherev1.KubernetesVersion]*eksdv1.Release{
+		"1.24": {
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "Release",
+				APIVersion: "distro.eks.amazonaws.com/v1alpha1",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test",
+				Namespace: "eksa-system",
+			},
+			Spec: eksdv1.ReleaseSpec{
+				Number: 1,
+			},
+			Status: eksdv1.ReleaseStatus{
+				Components: []eksdv1.Component{
+					{
+						Assets: nil,
+					},
+				},
+			},
+		},
+	}
+
+	_, err := cluster.NewSpec(config, bundles, eksd)
+	g.Expect(err).ToNot(BeNil())
+}
+
+func TestGetOldAndNewCPVersion(t *testing.T) {
+	g := NewWithT(t)
+	old := &cluster.Spec{
+		Config: &cluster.Config{
+			Cluster: &anywherev1.Cluster{
+				Spec: anywherev1.ClusterSpec{
+					KubernetesVersion: anywherev1.Kube119,
+				},
+			},
+		},
+		VersionsBundles: test.VersionsBundlesMap(),
+	}
+	new := old.DeepCopy()
+
+	_, _, err := cluster.GetOldAndNewCPVersionBundle(old, new)
+	g.Expect(err).To(BeNil())
+}
+
+func TestGetOldAndNewCPVersionError(t *testing.T) {
+	g := NewWithT(t)
+	old := &cluster.Spec{
+		Config: &cluster.Config{
+			Cluster: &anywherev1.Cluster{
+				Spec: anywherev1.ClusterSpec{
+					KubernetesVersion: anywherev1.Kube119,
+				},
+			},
+		},
+		VersionsBundles: make(map[anywherev1.KubernetesVersion]*cluster.VersionsBundle),
+	}
+	new := old.DeepCopy()
+
+	_, _, err := cluster.GetOldAndNewCPVersionBundle(old, new)
+	g.Expect(err).ToNot(BeNil())
+
+	old.VersionsBundles = test.VersionsBundlesMap()
+	_, _, err = cluster.GetOldAndNewCPVersionBundle(old, new)
+	g.Expect(err).ToNot(BeNil())
 }
 
 func validateImageURI(t *testing.T, gotImage releasev1.Image, wantURI string) {
