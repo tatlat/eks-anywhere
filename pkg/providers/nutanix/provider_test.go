@@ -921,6 +921,7 @@ func TestNutanixProviderGenerateCAPISpecForUpgradeUpdateMachineTemplateExternalE
 				newClusterSpec := clusterSpec.DeepCopy()
 
 				newClusterSpec.Cluster.Spec.KubernetesVersion = "1.20"
+				newClusterSpec.VersionsBundles["1.20"] = test.VersionBundle()
 
 				kubectl.EXPECT().GetEksaCluster(ctx, cluster, clusterSpec.Cluster.Name).Return(clusterSpec.Cluster, nil)
 				kubectl.EXPECT().GetEksaNutanixDatacenterConfig(ctx, cluster.Name, cluster.KubeconfigFile, clusterSpec.Cluster.Namespace).Return(ntnxDc, nil)
