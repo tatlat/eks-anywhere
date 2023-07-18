@@ -86,7 +86,7 @@ func givenClusterSpec() *cluster.Spec {
 		s.SnowCredentialsSecret = wantEksaCredentialsSecret()
 		s.SnowMachineConfigs = givenMachineConfigs()
 		s.SnowIPPools = givenIPPools()
-		s.VersionsBundle = givenVersionsBundle()
+		s.VersionsBundles["1.21"] = givenVersionsBundle()
 		s.ManagementCluster = givenManagementCluster()
 	})
 }
@@ -97,7 +97,7 @@ func givenClusterSpecWithCPUpgradeStrategy() *cluster.Spec {
 		s.SnowDatacenter = givenDatacenterConfig()
 		s.SnowCredentialsSecret = wantEksaCredentialsSecret()
 		s.SnowMachineConfigs = givenMachineConfigs()
-		s.VersionsBundle = givenVersionsBundle()
+		s.VersionsBundles["1.19"] = givenVersionsBundle()
 		s.ManagementCluster = givenManagementCluster()
 	})
 }
@@ -108,7 +108,7 @@ func givenClusterSpecWithMDUpgradeStrategy() *cluster.Spec {
 		s.SnowDatacenter = givenDatacenterConfig()
 		s.SnowCredentialsSecret = wantEksaCredentialsSecret()
 		s.SnowMachineConfigs = givenMachineConfigs()
-		s.VersionsBundle = givenVersionsBundle()
+		s.VersionsBundles["1.19"] = givenVersionsBundle()
 		s.ManagementCluster = givenManagementCluster()
 	})
 }
@@ -459,7 +459,7 @@ func givenProvider(t *testing.T) *snow.SnowProvider {
 
 func givenEmptyClusterSpec() *cluster.Spec {
 	return test.NewClusterSpec(func(s *cluster.Spec) {
-		s.VersionsBundle.KubeVersion = "1.21"
+		s.VersionsBundles["1.19"].KubeVersion = "1.21"
 	})
 }
 
@@ -867,7 +867,7 @@ func TestVersion(t *testing.T) {
 	snowVersion := "v1.0.2"
 	provider := givenProvider(t)
 	clusterSpec := givenEmptyClusterSpec()
-	clusterSpec.VersionsBundle.Snow.Version = snowVersion
+	clusterSpec.VersionsBundles["1.19"].Snow.Version = snowVersion
 	g := NewWithT(t)
 	result := provider.Version(clusterSpec)
 	g.Expect(result).To(Equal(snowVersion))
@@ -875,11 +875,15 @@ func TestVersion(t *testing.T) {
 
 func TestGetInfrastructureBundle(t *testing.T) {
 	tt := newSnowTest(t)
+	vb, err := tt.clusterSpec.GetCPVersionsBundle()
+	if err != nil {
+		t.Errorf("Can't get VersionsBundle")
+	}
 	want := &types.InfrastructureBundle{
 		FolderName: "infrastructure-snow/v1.0.2/",
 		Manifests: []releasev1alpha1.Manifest{
-			tt.clusterSpec.VersionsBundle.Snow.Components,
-			tt.clusterSpec.VersionsBundle.Snow.Metadata,
+			vb.Snow.Components,
+			vb.Snow.Metadata,
 		},
 	}
 	got := tt.provider.GetInfrastructureBundle(tt.clusterSpec)
@@ -1246,7 +1250,7 @@ func TestUpgradeNeededBundle(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			g := newSnowTest(t)
 			new := g.clusterSpec.DeepCopy()
-			new.VersionsBundle.Snow = tt.bundle
+			new.VersionsBundles["1.21"].Snow = tt.bundle
 			new.SnowMachineConfigs = givenMachineConfigs()
 			got, err := g.provider.UpgradeNeeded(g.ctx, new, g.clusterSpec, g.cluster)
 			g.Expect(err).To(Succeed())
@@ -1267,8 +1271,8 @@ func TestChangeDiffWithChange(t *testing.T) {
 	provider := givenProvider(t)
 	clusterSpec := givenEmptyClusterSpec()
 	newClusterSpec := clusterSpec.DeepCopy()
-	clusterSpec.VersionsBundle.Snow.Version = "v1.0.2"
-	newClusterSpec.VersionsBundle.Snow.Version = "v1.0.3"
+	clusterSpec.VersionsBundles["1.19"].Snow.Version = "v1.0.2"
+	newClusterSpec.VersionsBundles["1.19"].Snow.Version = "v1.0.3"
 	want := &types.ComponentChangeDiff{
 		ComponentName: "snow",
 		NewVersion:    "v1.0.3",

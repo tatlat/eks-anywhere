@@ -61,7 +61,10 @@ func (vs *VsphereTemplateBuilder) GenerateCAPISpecControlPlane(
 }
 
 func (vs *VsphereTemplateBuilder) isCgroupDriverSystemd(clusterSpec *cluster.Spec) (bool, error) {
-	bundle := clusterSpec.VersionsBundle
+	bundle, err := clusterSpec.GetCPVersionsBundle()
+	if err != nil {
+		return false, err
+	}
 	k8sVersion, err := semver.New(bundle.KubeDistro.Kubernetes.Tag)
 	if err != nil {
 		return false, fmt.Errorf("parsing kubernetes version %v: %v", bundle.KubeDistro.Kubernetes.Tag, err)
@@ -125,7 +128,10 @@ func buildTemplateMapCP(
 	datacenterSpec anywherev1.VSphereDatacenterConfigSpec,
 	controlPlaneMachineSpec, etcdMachineSpec anywherev1.VSphereMachineConfigSpec,
 ) (map[string]interface{}, error) {
-	bundle := clusterSpec.VersionsBundle
+	bundle, err := clusterSpec.GetCPVersionsBundle()
+	if err != nil {
+		return nil, err
+	}
 	format := "cloud-config"
 	etcdExtraArgs := clusterapi.SecureEtcdTlsCipherSuitesExtraArgs()
 	sharedExtraArgs := clusterapi.SecureTlsCipherSuitesExtraArgs()
@@ -332,7 +338,10 @@ func buildTemplateMapMD(
 	workerNodeGroupMachineSpec anywherev1.VSphereMachineConfigSpec,
 	workerNodeGroupConfiguration anywherev1.WorkerNodeGroupConfiguration,
 ) (map[string]interface{}, error) {
-	bundle := clusterSpec.VersionsBundle
+	bundle, err := clusterSpec.GetCPVersionsBundle()
+	if err != nil {
+		return nil, err
+	}
 	format := "cloud-config"
 	kubeletExtraArgs := clusterapi.SecureTlsCipherSuitesExtraArgs().
 		Append(clusterapi.WorkerNodeLabelsExtraArgs(workerNodeGroupConfiguration)).

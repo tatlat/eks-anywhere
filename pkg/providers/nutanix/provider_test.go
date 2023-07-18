@@ -925,8 +925,8 @@ func TestNutanixProviderChangeDiffWithChange(t *testing.T) {
 	provider := testDefaultNutanixProvider(t)
 	clusterSpec := test.NewFullClusterSpec(t, "testdata/eksa-cluster.yaml")
 	newClusterSpec := clusterSpec.DeepCopy()
-	clusterSpec.VersionsBundle.Nutanix.Version = "v0.5.2"
-	newClusterSpec.VersionsBundle.Nutanix.Version = "v1.0.0"
+	clusterSpec.VersionsBundles["1.19"].Nutanix.Version = "v0.5.2"
+	newClusterSpec.VersionsBundles["1.19"].Nutanix.Version = "v1.0.0"
 	want := &types.ComponentChangeDiff{
 		ComponentName: "nutanix",
 		NewVersion:    "v1.0.0",

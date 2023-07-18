@@ -202,14 +202,22 @@ func (p *cloudstackProvider) ValidateNewSpec(ctx context.Context, cluster *types
 }
 
 func (p *cloudstackProvider) ChangeDiff(currentSpec, newSpec *cluster.Spec) *types.ComponentChangeDiff {
-	if currentSpec.VersionsBundle.CloudStack.Version == newSpec.VersionsBundle.CloudStack.Version {
+	cvb, err := currentSpec.GetCPVersionsBundle()
+	if err != nil {
+		return nil
+	}
+	nvb, err := newSpec.GetCPVersionsBundle()
+	if err != nil {
+		return nil
+	}
+	if cvb.CloudStack.Version == nvb.CloudStack.Version {
 		return nil
 	}
 
 	return &types.ComponentChangeDiff{
 		ComponentName: constants.CloudStackProviderName,
-		NewVersion:    newSpec.VersionsBundle.CloudStack.Version,
-		OldVersion:    currentSpec.VersionsBundle.CloudStack.Version,
+		NewVersion:    nvb.CloudStack.Version,
+		OldVersion:    cvb.CloudStack.Version,
 	}
 }
 
@@ -818,7 +826,11 @@ func (p *cloudstackProvider) BootstrapSetup(ctx context.Context, clusterConfig *
 }
 
 func (p *cloudstackProvider) Version(clusterSpec *cluster.Spec) string {
-	return clusterSpec.VersionsBundle.CloudStack.Version
+	vb, err := clusterSpec.GetCPVersionsBundle()
+	if err != nil {
+		return ""
+	}
+	return vb.CloudStack.Version
 }
 
 func (p *cloudstackProvider) EnvMap(_ *cluster.Spec) (map[string]string, error) {
@@ -838,7 +850,10 @@ func (p *cloudstackProvider) GetDeployments() map[string][]string {
 }
 
 func (p *cloudstackProvider) GetInfrastructureBundle(clusterSpec *cluster.Spec) *types.InfrastructureBundle {
-	bundle := clusterSpec.VersionsBundle
+	bundle, err := clusterSpec.GetCPVersionsBundle()
+	if err != nil {
+		return nil
+	}
 	folderName := fmt.Sprintf("infrastructure-cloudstack/%s/", bundle.CloudStack.Version)
 
 	infraBundle := types.InfrastructureBundle{

@@ -98,8 +98,16 @@ func (i *EKSAInstaller) Upgrade(ctx context.Context, log logr.Logger, cluster *t
 		return nil, nil
 	}
 	log.V(1).Info("Starting EKS-A components upgrade")
-	oldVersion := currentSpec.VersionsBundle.Eksa.Version
-	newVersion := newSpec.VersionsBundle.Eksa.Version
+	ovb, err := currentSpec.GetCPVersionsBundle()
+	if err != nil {
+		return nil, err
+	}
+	nvb, err := newSpec.GetCPVersionsBundle()
+	if err != nil {
+		return nil, err
+	}
+	oldVersion := ovb.Eksa.Version
+	newVersion := nvb.Eksa.Version
 	if err := i.Install(ctx, log, cluster, newSpec); err != nil {
 		return nil, fmt.Errorf("upgrading EKS-A components from version %v to version %v: %v", oldVersion, newVersion, err)
 	}
@@ -183,7 +191,11 @@ func fullLifeCycleControllerForProvider(cluster *anywherev1.Cluster) bool {
 }
 
 func (g *EKSAComponentGenerator) parseEKSAComponentsSpec(spec *cluster.Spec) (*eksaComponents, error) {
-	componentsManifest, err := bundles.ReadManifest(g.reader, spec.VersionsBundle.Eksa.Components)
+	vb, err := spec.GetCPVersionsBundle()
+	if err != nil {
+		return nil, err
+	}
+	componentsManifest, err := bundles.ReadManifest(g.reader, vb.Eksa.Components)
 	if err != nil {
 		return nil, fmt.Errorf("loading manifest for eksa components: %v", err)
 	}
@@ -230,13 +242,22 @@ func (c *eksaComponents) BuildFromParsed(lookup yamlutil.ObjectLookup) error {
 
 // EksaChangeDiff computes the version diff in eksa components between two specs.
 func EksaChangeDiff(currentSpec, newSpec *cluster.Spec) *types.ChangeDiff {
-	if currentSpec.VersionsBundle.Eksa.Version != newSpec.VersionsBundle.Eksa.Version {
+	ovb, err := currentSpec.GetCPVersionsBundle()
+	if err != nil {
+		return nil
+	}
+	nvb, err := newSpec.GetCPVersionsBundle()
+	if err != nil {
+		return nil
+	}
+
+	if ovb.Eksa.Version != nvb.Eksa.Version {
 		return &types.ChangeDiff{
 			ComponentReports: []types.ComponentChangeDiff{
 				{
 					ComponentName: "EKS-A",
-					NewVersion:    newSpec.VersionsBundle.Eksa.Version,
-					OldVersion:    currentSpec.VersionsBundle.Eksa.Version,
+					NewVersion:    nvb.Eksa.Version,
+					OldVersion:    ovb.Eksa.Version,
 				},
 			},
 		}

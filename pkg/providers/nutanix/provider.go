@@ -520,7 +520,11 @@ func (p *Provider) UpdateKubeConfig(content *[]byte, clusterName string) error {
 }
 
 func (p *Provider) Version(clusterSpec *cluster.Spec) string {
-	return clusterSpec.VersionsBundle.Nutanix.Version
+	vb, err := clusterSpec.GetCPVersionsBundle()
+	if err != nil {
+		return ""
+	}
+	return vb.Nutanix.Version
 }
 
 func (p *Provider) EnvMap(_ *cluster.Spec) (map[string]string, error) {
@@ -543,7 +547,10 @@ func (p *Provider) GetDeployments() map[string][]string {
 }
 
 func (p *Provider) GetInfrastructureBundle(clusterSpec *cluster.Spec) *types.InfrastructureBundle {
-	bundle := clusterSpec.VersionsBundle
+	bundle, err := clusterSpec.GetCPVersionsBundle()
+	if err != nil {
+		return nil
+	}
 	manifests := []releasev1alpha1.Manifest{
 		bundle.Nutanix.Components,
 		bundle.Nutanix.Metadata,
@@ -608,14 +615,22 @@ func (p *Provider) ValidateNewSpec(_ context.Context, _ *types.Cluster, _ *clust
 }
 
 func (p *Provider) ChangeDiff(currentSpec, newSpec *cluster.Spec) *types.ComponentChangeDiff {
-	if currentSpec.VersionsBundle.Nutanix.Version == newSpec.VersionsBundle.Nutanix.Version {
+	cvb, err := currentSpec.GetCPVersionsBundle()
+	if err != nil {
+		return nil
+	}
+	nvb, err := newSpec.GetCPVersionsBundle()
+	if err != nil {
+		return nil
+	}
+	if cvb.Nutanix.Version == nvb.Nutanix.Version {
 		return nil
 	}
 
 	return &types.ComponentChangeDiff{
 		ComponentName: constants.NutanixProviderName,
-		NewVersion:    newSpec.VersionsBundle.Nutanix.Version,
-		OldVersion:    currentSpec.VersionsBundle.Nutanix.Version,
+		NewVersion:    nvb.Nutanix.Version,
+		OldVersion:    cvb.Nutanix.Version,
 	}
 }
 

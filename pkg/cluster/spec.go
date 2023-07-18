@@ -7,6 +7,8 @@ import (
 	eksdv1alpha1 "github.com/aws/eks-distro-build-tooling/release/api/v1alpha1"
 
 	eksav1alpha1 "github.com/aws/eks-anywhere/pkg/api/v1alpha1"
+	"github.com/aws/eks-anywhere/pkg/files"
+	"github.com/aws/eks-anywhere/pkg/manifests/bundles"
 	"github.com/aws/eks-anywhere/pkg/types"
 	"github.com/aws/eks-anywhere/release/api/v1alpha1"
 )
@@ -14,59 +16,40 @@ import (
 type Spec struct {
 	*Config
 	Bundles           *v1alpha1.Bundles
-	VersionsBundle    *VersionsBundle
-	eksdRelease       *eksdv1alpha1.Release
 	OIDCConfig        *eksav1alpha1.OIDCConfig
 	AWSIamConfig      *eksav1alpha1.AWSIamConfig
 	ManagementCluster *types.Cluster // TODO(g-gaston): cleanup, this doesn't belong here
-	WorkerVersions    map[string]*WorkerVersions
-}
-
-// WorkerVersions holds the VersionsBundle and eksdRelease for node groups that contain a KubernetesVersion.
-type WorkerVersions struct {
-	VersionsBundle *VersionsBundle
-	eksdRelease    *eksdv1alpha1.Release
-}
-
-func (w *WorkerVersions) deepCopy() *WorkerVersions {
-	return &WorkerVersions{
-		VersionsBundle: &VersionsBundle{
-			VersionsBundle: w.VersionsBundle.VersionsBundle.DeepCopy(),
-			KubeDistro:     w.VersionsBundle.KubeDistro.deepCopy(),
-		},
-		eksdRelease: w.eksdRelease.DeepCopy(),
-	}
-}
-
-func deepCopyWorkerVersions(workerVersions map[string]*WorkerVersions) map[string]*WorkerVersions {
-	if workerVersions == nil {
-		return nil
-	}
-	retVal := map[string]*WorkerVersions{}
-	for key, wv := range workerVersions {
-		retVal[key] = wv.deepCopy()
-	}
-	return retVal
+	VersionsBundles   map[eksav1alpha1.KubernetesVersion]*VersionsBundle
 }
 
 func (s *Spec) DeepCopy() *Spec {
 	return &Spec{
-		Config:       s.Config.DeepCopy(),
-		OIDCConfig:   s.OIDCConfig.DeepCopy(),
-		AWSIamConfig: s.AWSIamConfig.DeepCopy(),
-		VersionsBundle: &VersionsBundle{
-			VersionsBundle: s.VersionsBundle.VersionsBundle.DeepCopy(),
-			KubeDistro:     s.VersionsBundle.KubeDistro.deepCopy(),
-		},
-		eksdRelease:    s.eksdRelease.DeepCopy(),
-		Bundles:        s.Bundles.DeepCopy(),
-		WorkerVersions: deepCopyWorkerVersions(s.WorkerVersions),
+		Config:          s.Config.DeepCopy(),
+		OIDCConfig:      s.OIDCConfig.DeepCopy(),
+		AWSIamConfig:    s.AWSIamConfig.DeepCopy(),
+		Bundles:         s.Bundles.DeepCopy(),
+		VersionsBundles: deepCopyVersionsBundles(s.VersionsBundles),
 	}
 }
 
 type VersionsBundle struct {
 	*v1alpha1.VersionsBundle
 	KubeDistro *KubeDistro
+}
+
+func deepCopyVersionsBundles(v map[eksav1alpha1.KubernetesVersion]*VersionsBundle) map[eksav1alpha1.KubernetesVersion]*VersionsBundle {
+	if v == nil {
+		return nil
+	}
+
+	m := make(map[eksav1alpha1.KubernetesVersion]*VersionsBundle)
+	for key, val := range v {
+		m[key] = &VersionsBundle{
+			VersionsBundle: val.VersionsBundle.DeepCopy(),
+			KubeDistro:     val.KubeDistro.deepCopy(),
+		}
+	}
+	return m
 }
 
 // EKSD represents an eks-d release.
@@ -76,6 +59,11 @@ type EKSD struct {
 	// Number is the monotonically increasing number that distinguishes the different eks-d releases
 	// for the same Kubernetes minor version (channel).
 	Number int
+}
+
+func (k *KubeDistro) deepCopy() *KubeDistro {
+	k2 := *k
+	return &k2
 }
 
 type KubeDistro struct {
@@ -94,41 +82,22 @@ type KubeDistro struct {
 	KubeProxy           v1alpha1.Image
 }
 
-func (k *KubeDistro) deepCopy() *KubeDistro {
-	k2 := *k
-	return &k2
-}
-
 type VersionedRepository struct {
 	Repository, Tag string
 }
 
 // NewSpec builds a new [Spec].
-func NewSpec(config *Config, bundles *v1alpha1.Bundles, eksdRelease *eksdv1alpha1.Release, workerEksdReleases map[string]*eksdv1alpha1.Release) (*Spec, error) {
+func NewSpec(config *Config, bundles *v1alpha1.Bundles, eksdReleases map[eksav1alpha1.KubernetesVersion]*eksdv1alpha1.Release) (*Spec, error) {
 	s := &Spec{}
-
-	versionsBundle, err := constructVersionsBundles(config.Cluster.Spec.KubernetesVersion, bundles, eksdRelease)
-	if err != nil {
-		return nil, err
-	}
-
-	workerVersions := map[string]*WorkerVersions{}
-	for _, wng := range config.Cluster.Spec.WorkerNodeGroupConfigurations {
-		if weksd, ok := workerEksdReleases[wng.Name]; ok && wng.KubernetesVersion != nil {
-			vb, err := constructVersionsBundles(*wng.KubernetesVersion, bundles, weksd)
-			if err != nil {
-				return nil, err
-			}
-			wv := &WorkerVersions{VersionsBundle: vb, eksdRelease: weksd}
-			workerVersions[wng.Name] = wv
-		}
-	}
 
 	s.Bundles = bundles
 	s.Config = config
-	s.VersionsBundle = versionsBundle
-	s.eksdRelease = eksdRelease
-	s.WorkerVersions = workerVersions
+
+	vb, err := GetAllVersionsBundles(s.Cluster, bundles, eksdReleases)
+	if err != nil {
+		return nil, err
+	}
+	s.VersionsBundles = vb
 
 	// Get first aws iam config if it exists
 	// Config supports multiple configs because Cluster references a slice
@@ -147,26 +116,17 @@ func NewSpec(config *Config, bundles *v1alpha1.Bundles, eksdRelease *eksdv1alpha
 	return s, nil
 }
 
-func constructVersionsBundles(version eksav1alpha1.KubernetesVersion, bundles *v1alpha1.Bundles, eksd *eksdv1alpha1.Release) (*VersionsBundle, error) {
-	vb, err := GetVersionsBundle(version, bundles)
-	if err != nil {
-		return nil, err
-	}
-
-	kubeDistro, err := buildKubeDistro(eksd)
-	if err != nil {
-		return nil, err
-	}
-
-	return &VersionsBundle{
-		VersionsBundle: vb,
-		KubeDistro:     kubeDistro,
-	}, nil
-}
-
 func (s *Spec) KubeDistroImages() []v1alpha1.Image {
 	images := []v1alpha1.Image{}
-	for _, component := range s.eksdRelease.Status.Components {
+	vb, err := GetVersionsBundle(s.Cluster.Spec.KubernetesVersion, s.Bundles)
+	if err != nil || vb == nil {
+		return images
+	}
+	eksdRelease, err := bundles.ReadEKSD(files.NewReader(), *vb)
+	if err != nil || eksdRelease == nil {
+		return images
+	}
+	for _, component := range eksdRelease.Status.Components {
 		for _, asset := range component.Assets {
 			if asset.Image != nil {
 				images = append(images, v1alpha1.Image{URI: asset.Image.URI})
@@ -174,6 +134,67 @@ func (s *Spec) KubeDistroImages() []v1alpha1.Image {
 		}
 	}
 	return images
+}
+
+func GetAllVersionsBundles(cluster *eksav1alpha1.Cluster, bundles *v1alpha1.Bundles, eksdReleases map[eksav1alpha1.KubernetesVersion]*eksdv1alpha1.Release) (map[eksav1alpha1.KubernetesVersion]*VersionsBundle, error) {
+	m := make(map[eksav1alpha1.KubernetesVersion]*VersionsBundle)
+	version := cluster.Spec.KubernetesVersion
+	vb, err := GetVersionBundles(version, bundles, eksdReleases)
+	if err != nil {
+		return nil, err
+	}
+	m[version] = vb
+	for _, wng := range cluster.Spec.WorkerNodeGroupConfigurations {
+		if wng.KubernetesVersion != nil {
+			version := *wng.KubernetesVersion
+			if _, ok := m[version]; ok {
+				continue
+			}
+			vb, err = GetVersionBundles(version, bundles, eksdReleases)
+			if err != nil {
+				return nil, err
+			}
+			m[version] = vb
+		}
+	}
+	return m, nil
+}
+
+func GetVersionBundles(version eksav1alpha1.KubernetesVersion, b *v1alpha1.Bundles, eksdReleases map[eksav1alpha1.KubernetesVersion]*eksdv1alpha1.Release) (*VersionsBundle, error) {
+	v, err := GetVersionsBundle(version, b)
+	if err != nil {
+		return nil, err
+	}
+
+	eksdRelease, ok := eksdReleases[version]
+	if !ok {
+		return nil, fmt.Errorf("can't get eksd release for kube version: %v", version)
+	}
+
+	kd, err := buildKubeDistro(eksdRelease)
+	if err != nil {
+		return nil, err
+	}
+
+	vb := &VersionsBundle{
+		VersionsBundle: v,
+		KubeDistro:     kd,
+	}
+
+	return vb, nil
+}
+
+func (s *Spec) GetVersionBundles(version eksav1alpha1.KubernetesVersion) (*VersionsBundle, error) {
+	vb, ok := s.VersionsBundles[version]
+	if !ok {
+		return nil, fmt.Errorf("VersionsBundle for version %v not found", version)
+	}
+
+	return vb, nil
+}
+
+func (s *Spec) GetCPVersionsBundle() (*VersionsBundle, error) {
+	return s.GetVersionBundles(s.Cluster.Spec.KubernetesVersion)
 }
 
 func buildKubeDistro(eksd *eksdv1alpha1.Release) (*KubeDistro, error) {

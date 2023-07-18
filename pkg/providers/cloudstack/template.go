@@ -100,7 +100,10 @@ func (cs *TemplateBuilder) GenerateCAPISpecWorkers(clusterSpec *cluster.Spec, wo
 // nolint:gocyclo
 func buildTemplateMapCP(clusterSpec *cluster.Spec) (map[string]interface{}, error) {
 	datacenterConfigSpec := clusterSpec.CloudStackDatacenter.Spec
-	bundle := clusterSpec.VersionsBundle
+	bundle, err := clusterSpec.GetCPVersionsBundle()
+	if err != nil {
+		return nil, err
+	}
 	format := "cloud-config"
 	host, port, err := getValidControlPlaneHostPort(clusterSpec.Cluster.Spec.ControlPlaneConfiguration.Endpoint.Host)
 	if err != nil {
@@ -311,7 +314,10 @@ func fillProxyConfigurations(values map[string]interface{}, clusterSpec *cluster
 }
 
 func buildTemplateMapMD(clusterSpec *cluster.Spec, workerNodeGroupConfiguration v1alpha1.WorkerNodeGroupConfiguration) (map[string]interface{}, error) {
-	bundle := clusterSpec.VersionsBundle
+	bundle, err := clusterSpec.GetCPVersionsBundle()
+	if err != nil {
+		return nil, err
+	}
 	format := "cloud-config"
 	kubeletExtraArgs := clusterapi.SecureTlsCipherSuitesExtraArgs().
 		Append(clusterapi.WorkerNodeLabelsExtraArgs(workerNodeGroupConfiguration)).

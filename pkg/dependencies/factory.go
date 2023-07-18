@@ -127,13 +127,14 @@ func (d *Dependencies) Close(ctx context.Context) error {
 }
 
 func ForSpec(ctx context.Context, clusterSpec *cluster.Spec) *Factory {
-	eksaToolsImage := clusterSpec.VersionsBundle.Eksa.CliTools
+	vb, _ := clusterSpec.GetCPVersionsBundle()
+	eksaToolsImage := vb.Eksa.CliTools
 	return NewFactory().
 		UseExecutableImage(eksaToolsImage.VersionedImage()).
 		WithRegistryMirror(registrymirror.FromCluster(clusterSpec.Cluster)).
 		UseProxyConfiguration(clusterSpec.Cluster.ProxyConfiguration()).
 		WithWriterFolder(clusterSpec.Cluster.Name).
-		WithDiagnosticCollectorImage(clusterSpec.VersionsBundle.Eksa.DiagnosticCollector.VersionedImage())
+		WithDiagnosticCollectorImage(vb.Eksa.DiagnosticCollector.VersionedImage())
 }
 
 // Factory helps initialization.
@@ -1226,12 +1227,16 @@ func (f *Factory) WithPackageControllerClient(spec *cluster.Spec, kubeConfig str
 		if err != nil {
 			return err
 		}
+		vb, err := spec.GetCPVersionsBundle()
+		if err != nil {
+			return err
+		}
 		f.dependencies.PackageControllerClient = curatedpackages.NewPackageControllerClient(
 			f.dependencies.Helm,
 			f.dependencies.Kubectl,
 			spec.Cluster.Name,
 			mgmtKubeConfig,
-			&spec.VersionsBundle.PackageController.HelmChart,
+			&vb.PackageController.HelmChart,
 			f.registryMirror,
 			curatedpackages.WithEksaAccessKeyId(eksaAccessKeyID),
 			curatedpackages.WithEksaSecretAccessKey(eksaSecretKey),

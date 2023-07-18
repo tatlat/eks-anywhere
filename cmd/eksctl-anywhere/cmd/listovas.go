@@ -65,7 +65,10 @@ func listOvas(context context.Context, clusterSpecPath, bundlesOverride string) 
 		return err
 	}
 
-	bundle := clusterSpec.VersionsBundle
+	bundle, err := clusterSpec.GetCPVersionsBundle()
+	if err != nil {
+		return err
+	}
 
 	titler := cases.Title(language.English)
 	for _, ova := range bundle.Ovas() {

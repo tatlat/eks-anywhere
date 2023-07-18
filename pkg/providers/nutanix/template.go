@@ -150,7 +150,10 @@ func buildTemplateMapCP(
 	controlPlaneMachineSpec v1alpha1.NutanixMachineConfigSpec,
 	etcdMachineSpec v1alpha1.NutanixMachineConfigSpec,
 ) (map[string]interface{}, error) {
-	bundle := clusterSpec.VersionsBundle
+	bundle, err := clusterSpec.GetCPVersionsBundle()
+	if err != nil {
+		return nil, err
+	}
 	format := "cloud-config"
 	apiServerExtraArgs := clusterapi.OIDCToExtraArgs(clusterSpec.OIDCConfig).
 		Append(clusterapi.AwsIamAuthExtraArgs(clusterSpec.AWSIamConfig)).
@@ -254,7 +257,10 @@ func buildTemplateMapCP(
 }
 
 func buildTemplateMapMD(clusterSpec *cluster.Spec, workerNodeGroupMachineSpec v1alpha1.NutanixMachineConfigSpec, workerNodeGroupConfiguration v1alpha1.WorkerNodeGroupConfiguration) (map[string]interface{}, error) {
-	bundle := clusterSpec.VersionsBundle
+	bundle, err := clusterSpec.GetCPVersionsBundle()
+	if err != nil {
+		return nil, err
+	}
 	format := "cloud-config"
 
 	kubeletExtraArgs := clusterapi.SecureTlsCipherSuitesExtraArgs().

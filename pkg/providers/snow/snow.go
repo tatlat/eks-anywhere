@@ -189,7 +189,11 @@ func (p *SnowProvider) UpdateKubeConfig(content *[]byte, clusterName string) err
 }
 
 func (p *SnowProvider) Version(clusterSpec *cluster.Spec) string {
-	return clusterSpec.VersionsBundle.Snow.Version
+	vb, err := clusterSpec.GetCPVersionsBundle()
+	if err != nil {
+		return ""
+	}
+	return vb.Snow.Version
 }
 
 func (p *SnowProvider) EnvMap(clusterSpec *cluster.Spec) (map[string]string, error) {
@@ -197,7 +201,12 @@ func (p *SnowProvider) EnvMap(clusterSpec *cluster.Spec) (map[string]string, err
 	envMap[snowCredentialsKey] = string(clusterSpec.SnowCredentialsSecret.Data[v1alpha1.SnowCredentialsKey])
 	envMap[snowCertsKey] = string(clusterSpec.SnowCredentialsSecret.Data[v1alpha1.SnowCertificatesKey])
 
-	envMap["SNOW_CONTROLLER_IMAGE"] = clusterSpec.VersionsBundle.Snow.Manager.VersionedImage()
+	vb, err := clusterSpec.GetCPVersionsBundle()
+	if err != nil {
+		return nil, err
+	}
+
+	envMap["SNOW_CONTROLLER_IMAGE"] = vb.Snow.Manager.VersionedImage()
 
 	return envMap, nil
 }
@@ -209,7 +218,10 @@ func (p *SnowProvider) GetDeployments() map[string][]string {
 }
 
 func (p *SnowProvider) GetInfrastructureBundle(clusterSpec *cluster.Spec) *types.InfrastructureBundle {
-	bundle := clusterSpec.VersionsBundle
+	bundle, err := clusterSpec.GetCPVersionsBundle()
+	if err != nil {
+		return nil
+	}
 	folderName := fmt.Sprintf("infrastructure-snow/%s/", bundle.Snow.Version)
 
 	infraBundle := types.InfrastructureBundle{
@@ -247,14 +259,22 @@ func (p *SnowProvider) ValidateNewSpec(ctx context.Context, cluster *types.Clust
 }
 
 func (p *SnowProvider) ChangeDiff(currentSpec, newSpec *cluster.Spec) *types.ComponentChangeDiff {
-	if currentSpec.VersionsBundle.Snow.Version == newSpec.VersionsBundle.Snow.Version {
+	cvb, err := currentSpec.GetCPVersionsBundle()
+	if err != nil {
+		return nil
+	}
+	nvb, err := newSpec.GetCPVersionsBundle()
+	if err != nil {
+		return nil
+	}
+	if cvb.Snow.Version == nvb.Snow.Version {
 		return nil
 	}
 
 	return &types.ComponentChangeDiff{
 		ComponentName: constants.SnowProviderName,
-		NewVersion:    newSpec.VersionsBundle.Snow.Version,
-		OldVersion:    currentSpec.VersionsBundle.Snow.Version,
+		NewVersion:    nvb.Snow.Version,
+		OldVersion:    cvb.Snow.Version,
 	}
 }
 
@@ -328,7 +348,15 @@ func (p *SnowProvider) validateUpgradeRolloutStrategy(clusterSpec *cluster.Spec)
 // to trigger a cluster upgrade or not.
 // TODO: revert the change once cluster.BuildSpec is used in cluster_manager to replace the deprecated cluster.BuildSpecForCluster
 func (p *SnowProvider) UpgradeNeeded(ctx context.Context, newSpec, oldSpec *cluster.Spec, cluster *types.Cluster) (bool, error) {
-	if !bundleImagesEqual(newSpec.VersionsBundle.Snow, oldSpec.VersionsBundle.Snow) {
+	ovb, err := oldSpec.GetCPVersionsBundle()
+	if err != nil {
+		return false, err
+	}
+	nvb, err := newSpec.GetCPVersionsBundle()
+	if err != nil {
+		return false, err
+	}
+	if !bundleImagesEqual(nvb.Snow, ovb.Snow) {
 		return true, nil
 	}
 

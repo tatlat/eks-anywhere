@@ -102,11 +102,13 @@ func TestBuildSpec(t *testing.T) {
 			OIDCConfigs:   map[string]*anywherev1.OIDCConfig{},
 			AWSIAMConfigs: map[string]*anywherev1.AWSIamConfig{},
 		},
-		VersionsBundle: &cluster.VersionsBundle{
-			VersionsBundle: &tt.bundles.Spec.VersionsBundles[0],
-			KubeDistro:     tt.kubeDistro,
-		},
 		Bundles: tt.bundles,
+		VersionsBundles: map[anywherev1.KubernetesVersion]*cluster.VersionsBundle{
+			anywherev1.Kube123: {
+				VersionsBundle: &tt.bundles.Spec.VersionsBundles[0],
+				KubeDistro:     tt.kubeDistro,
+			},
+		},
 	}
 
 	spec, err := cluster.BuildSpec(tt.ctx, tt.client, tt.cluster)
@@ -115,36 +117,12 @@ func TestBuildSpec(t *testing.T) {
 	tt.Expect(spec.AWSIamConfig).To(Equal(wantSpec.AWSIamConfig))
 	tt.Expect(spec.OIDCConfig).To(Equal(wantSpec.OIDCConfig))
 	tt.Expect(spec.Bundles).To(Equal(wantSpec.Bundles))
-	tt.Expect(spec.VersionsBundle).To(Equal(wantSpec.VersionsBundle))
+	tt.Expect(spec.VersionsBundles).To(Equal(wantSpec.VersionsBundles))
 }
 
 func TestBuildSpecGetBundlesError(t *testing.T) {
 	tt := newBuildSpecTest(t)
 	tt.client.EXPECT().Get(tt.ctx, "bundles-1", "my-namespace", &releasev1.Bundles{}).Return(errors.New("client error"))
-
-	_, err := cluster.BuildSpec(tt.ctx, tt.client, tt.cluster)
-	tt.Expect(err).To(MatchError(ContainSubstring("client error")))
-}
-
-func TestBuildSpecGetEksdError(t *testing.T) {
-	tt := newBuildSpecTest(t)
-	tt.expectGetBundles()
-	tt.client.EXPECT().Get(tt.ctx, "eksd-123", "eksa-system", &eksdv1.Release{}).Return(errors.New("client error"))
-
-	_, err := cluster.BuildSpec(tt.ctx, tt.client, tt.cluster)
-	tt.Expect(err).To(MatchError(ContainSubstring("client error")))
-}
-
-func TestBuildSpecGetEksdErrorWorkerNodes(t *testing.T) {
-	tt := newBuildSpecTest(t)
-	tt.cluster.Spec.WorkerNodeGroupConfigurations = []anywherev1.WorkerNodeGroupConfiguration{
-		{
-			KubernetesVersion: &tt.cluster.Spec.KubernetesVersion,
-		},
-	}
-	tt.expectGetBundles()
-	tt.expectGetEksd()
-	tt.client.EXPECT().Get(tt.ctx, "eksd-123", "eksa-system", &eksdv1.Release{}).Return(errors.New("client error"))
 
 	_, err := cluster.BuildSpec(tt.ctx, tt.client, tt.cluster)
 	tt.Expect(err).To(MatchError(ContainSubstring("client error")))
@@ -171,16 +149,6 @@ func TestBuildSpecUnsupportedKubernetesVersionError(t *testing.T) {
 
 	_, err := cluster.BuildSpec(tt.ctx, tt.client, tt.cluster)
 	tt.Expect(err).To(MatchError(ContainSubstring("kubernetes version 1.23 is not supported by bundles manifest 2")))
-}
-
-func TestBuildSpecInitError(t *testing.T) {
-	tt := newBuildSpecTest(t)
-	tt.eksdRelease.Status.Components = []eksdv1.Component{}
-	tt.expectGetBundles()
-	tt.expectGetEksd()
-
-	_, err := cluster.BuildSpec(tt.ctx, tt.client, tt.cluster)
-	tt.Expect(err).To(MatchError(ContainSubstring("is no present in eksd release")))
 }
 
 func wantKubeDistroForEksdRelease() (*eksdv1.Release, *cluster.KubeDistro) {

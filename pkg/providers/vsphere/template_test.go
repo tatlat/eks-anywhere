@@ -16,6 +16,7 @@ import (
 
 func TestVsphereTemplateBuilderGenerateCAPISpecControlPlaneNoKubeVersion(t *testing.T) {
 	clusterSpec := vsphereClusterSpec()
+	clusterSpec.Cluster.Spec.KubernetesVersion = ""
 	g := NewWithT(t)
 	vs := vsphere.NewVsphereTemplateBuilder(time.Now)
 	_, err := vs.GenerateCAPISpecControlPlane(clusterSpec)

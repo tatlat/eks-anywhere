@@ -231,7 +231,10 @@ func kubeletCgroupDriverExtraArgs(kubeVersion v1alpha1.KubernetesVersion) (clust
 }
 
 func buildTemplateMapCP(clusterSpec *cluster.Spec) (map[string]interface{}, error) {
-	bundle := clusterSpec.VersionsBundle
+	bundle, err := clusterSpec.GetCPVersionsBundle()
+	if err != nil {
+		return nil, err
+	}
 	etcdExtraArgs := clusterapi.SecureEtcdTlsCipherSuitesExtraArgs()
 	sharedExtraArgs := clusterapi.SecureTlsCipherSuitesExtraArgs()
 	kubeletExtraArgs := clusterapi.SecureTlsCipherSuitesExtraArgs().
@@ -305,7 +308,10 @@ func buildTemplateMapCP(clusterSpec *cluster.Spec) (map[string]interface{}, erro
 }
 
 func buildTemplateMapMD(clusterSpec *cluster.Spec, workerNodeGroupConfiguration v1alpha1.WorkerNodeGroupConfiguration) (map[string]interface{}, error) {
-	bundle := clusterSpec.VersionsBundle
+	bundle, err := clusterSpec.GetCPVersionsBundle()
+	if err != nil {
+		return nil, err
+	}
 	kubeletExtraArgs := clusterapi.SecureTlsCipherSuitesExtraArgs().
 		Append(clusterapi.WorkerNodeLabelsExtraArgs(workerNodeGroupConfiguration)).
 		Append(clusterapi.ResolvConfExtraArgs(clusterSpec.Cluster.Spec.ClusterNetwork.DNS.ResolvConf))
@@ -534,7 +540,11 @@ func getUpdatedKubeConfigContent(content *[]byte, dockerLbPort string) {
 }
 
 func (p *provider) Version(clusterSpec *cluster.Spec) string {
-	return clusterSpec.VersionsBundle.Docker.Version
+	vb, err := clusterSpec.GetCPVersionsBundle()
+	if err != nil {
+		return ""
+	}
+	return vb.Docker.Version
 }
 
 func (p *provider) EnvMap(_ *cluster.Spec) (map[string]string, error) {
@@ -552,7 +562,10 @@ func (p *provider) GetDeployments() map[string][]string {
 }
 
 func (p *provider) GetInfrastructureBundle(clusterSpec *cluster.Spec) *types.InfrastructureBundle {
-	bundle := clusterSpec.VersionsBundle
+	bundle, err := clusterSpec.GetCPVersionsBundle()
+	if err != nil {
+		return nil
+	}
 	folderName := fmt.Sprintf("infrastructure-docker/%s/", bundle.Docker.Version)
 
 	infraBundle := types.InfrastructureBundle{
@@ -580,14 +593,22 @@ func (p *provider) ValidateNewSpec(_ context.Context, _ *types.Cluster, _ *clust
 }
 
 func (p *provider) ChangeDiff(currentSpec, newSpec *cluster.Spec) *types.ComponentChangeDiff {
-	if currentSpec.VersionsBundle.Docker.Version == newSpec.VersionsBundle.Docker.Version {
+	cvb, err := currentSpec.GetCPVersionsBundle()
+	if err != nil {
+		return nil
+	}
+	nvb, err := newSpec.GetCPVersionsBundle()
+	if err != nil {
+		return nil
+	}
+	if cvb.Docker.Version == nvb.Docker.Version {
 		return nil
 	}
 
 	return &types.ComponentChangeDiff{
 		ComponentName: constants.DockerProviderName,
-		NewVersion:    newSpec.VersionsBundle.Docker.Version,
-		OldVersion:    currentSpec.VersionsBundle.Docker.Version,
+		NewVersion:    nvb.Docker.Version,
+		OldVersion:    cvb.Docker.Version,
 	}
 }
 

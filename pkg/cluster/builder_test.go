@@ -29,24 +29,6 @@ func TestFileSpecBuilderBuildError(t *testing.T) {
 			releaseURL:        "testdata/simple_release.yaml",
 			cliVersion:        "v1.0.0",
 		},
-		{
-			testName:          "Kubernetes version not supported",
-			clusterConfigFile: "testdata/cluster_1_18.yaml",
-			releaseURL:        "testdata/simple_release.yaml",
-			cliVersion:        "v0.0.1",
-		},
-		{
-			testName:          "Reading EkdD Release",
-			clusterConfigFile: "testdata/cluster_1_19.yaml",
-			releaseURL:        "testdata/release_bundle_missing_eksd.yaml",
-			cliVersion:        "v0.0.1",
-		},
-		{
-			testName:          "Worker Node Kubernetes Version",
-			clusterConfigFile: "testdata/cluster_worker_node_k8s.yaml",
-			releaseURL:        "testdata/simple_release.yaml",
-			cliVersion:        "v0.0.1",
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.testName, func(t *testing.T) {

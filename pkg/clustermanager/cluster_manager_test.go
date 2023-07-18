@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	eksdv1alpha1 "github.com/aws/eks-distro-build-tooling/release/api/v1alpha1"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/assert"
@@ -910,8 +909,8 @@ func TestClusterManagerUpgradeWorkloadClusterAWSIamConfigSuccess(t *testing.T) {
 	tt.oldClusterConfig.Spec.IdentityProviderRefs = []v1alpha1.Ref{{Kind: v1alpha1.AWSIamConfigKind, Name: oldIamConfig.Name}}
 	tt.newClusterConfig = tt.oldClusterConfig.DeepCopy()
 
-	r := test.EksdRelease()
-	r.ResourceVersion = "999"
+	r := test.EksdReleasesMap()
+	r[v1alpha1.Kube119].ResourceVersion = "999"
 
 	config := &cluster.Config{
 		Cluster:               tt.oldClusterConfig,
@@ -923,7 +922,7 @@ func TestClusterManagerUpgradeWorkloadClusterAWSIamConfigSuccess(t *testing.T) {
 		},
 	}
 
-	cs, _ := cluster.NewSpec(config, tt.clusterSpec.Bundles, r, make(map[string]*eksdv1alpha1.Release))
+	cs, _ := cluster.NewSpec(config, tt.clusterSpec.Bundles, r)
 
 	tt.clusterSpec = cs
 
@@ -1712,8 +1711,8 @@ func TestClusterManagerCreateEKSAResourcesSuccess(t *testing.T) {
 	features.ClearCache()
 	ctx := context.Background()
 	tt := newTest(t)
-	tt.clusterSpec.VersionsBundle.EksD.Components = "testdata/eksa_components.yaml"
-	tt.clusterSpec.VersionsBundle.EksD.EksDReleaseUrl = "testdata/eksa_components.yaml"
+	// tt.clusterSpec.VersionsBundle.EksD.Components = "testdata/eksa_components.yaml"
+	// tt.clusterSpec.VersionsBundle.EksD.EksDReleaseUrl = "testdata/eksa_components.yaml"
 
 	datacenterConfig := &v1alpha1.VSphereDatacenterConfig{}
 	machineConfigs := []providers.MachineConfig{}
@@ -1734,8 +1733,8 @@ func TestClusterManagerCreateEKSAResourcesFailure(t *testing.T) {
 	features.ClearCache()
 	ctx := context.Background()
 	tt := newTest(t)
-	tt.clusterSpec.VersionsBundle.EksD.Components = "testdata/eksa_components.yaml"
-	tt.clusterSpec.VersionsBundle.EksD.EksDReleaseUrl = "testdata/eksa_components.yaml"
+	// tt.clusterSpec.VersionsBundle.EksD.Components = "testdata/eksa_components.yaml"
+	// tt.clusterSpec.VersionsBundle.EksD.EksDReleaseUrl = "testdata/eksa_components.yaml"
 	tt.clusterSpec.Cluster.Namespace = "test_namespace"
 
 	datacenterConfig := &v1alpha1.VSphereDatacenterConfig{}
@@ -2368,8 +2367,6 @@ func newSpecChangedTest(t *testing.T, opts ...clustermanager.ClusterManagerOpt) 
 
 	b := test.Bundle()
 	b.ResourceVersion = "999"
-	r := test.EksdRelease()
-	r.ResourceVersion = "999"
 
 	config := &cluster.Config{
 		Cluster:               newClusterConfig,
@@ -2379,7 +2376,10 @@ func newSpecChangedTest(t *testing.T, opts ...clustermanager.ClusterManagerOpt) 
 		AWSIAMConfigs:         map[string]*v1alpha1.AWSIamConfig{},
 	}
 
-	cs, _ := cluster.NewSpec(config, b, r, make(map[string]*eksdv1alpha1.Release))
+	r := test.EksdReleasesMap()
+	r[v1alpha1.Kube119].ResourceVersion = "999"
+
+	cs, _ := cluster.NewSpec(config, b, r)
 	changedTest.clusterSpec = cs
 
 	return changedTest
@@ -2408,7 +2408,7 @@ func TestClusterManagerClusterSpecChangedClusterChanged(t *testing.T) {
 
 func TestClusterManagerClusterSpecChangedEksDReleaseChanged(t *testing.T) {
 	tt := newSpecChangedTest(t)
-	tt.clusterSpec.VersionsBundle.EksD.Name = "kubernetes-1-19-eks-5"
+	tt.clusterSpec.Cluster.Spec.KubernetesVersion = "1.22"
 
 	tt.mocks.client.EXPECT().GetEksaCluster(tt.ctx, tt.cluster, tt.clusterSpec.Cluster.Name).Return(tt.oldClusterConfig, nil)
 

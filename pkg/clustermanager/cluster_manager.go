@@ -705,7 +705,16 @@ func (c *ClusterManager) EKSAClusterSpecChanged(ctx context.Context, cluster *ty
 		return false, err
 	}
 
-	if currentClusterSpec.VersionsBundle.EksD.Name != newClusterSpec.VersionsBundle.EksD.Name {
+	cvb, err := currentClusterSpec.GetCPVersionsBundle()
+	if err != nil {
+		return false, err
+	}
+	nvb, err := newClusterSpec.GetCPVersionsBundle()
+	if err != nil {
+		return false, err
+	}
+
+	if cvb.EksD.Name != nvb.EksD.Name {
 		logger.V(3).Info("New eks-d release detected")
 		return true, nil
 	}
