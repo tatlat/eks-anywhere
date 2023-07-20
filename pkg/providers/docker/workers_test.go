@@ -19,7 +19,7 @@ import (
 	"github.com/aws/eks-anywhere/pkg/controller/clientutil"
 	"github.com/aws/eks-anywhere/pkg/providers/docker"
 	"github.com/aws/eks-anywhere/pkg/utils/ptr"
-	"github.com/aws/eks-anywhere/release/api/v1alpha1"
+	releasev1 "github.com/aws/eks-anywhere/release/api/v1alpha1"
 )
 
 func TestWorkersSpecNewCluster(t *testing.T) {
@@ -114,7 +114,7 @@ func TestWorkersSpecUpgradeCluster(t *testing.T) {
 	expectedGroup1.MachineDeployment.Spec.Template.Spec.Bootstrap.ConfigRef.Name = "test-md-0-2"
 
 	// This will cause a change in the docker machine templates, which are immutable
-	spec.VersionsBundles["1.23"].EksD.KindNode = v1alpha1.Image{
+	spec.VersionsBundles["1.23"].EksD.KindNode = releasev1.Image{
 		URI: "my-new-kind-image:tag",
 	}
 	expectedGroup1.ProviderMachineTemplate.Spec.Template.Spec.CustomImage = "my-new-kind-image:tag"

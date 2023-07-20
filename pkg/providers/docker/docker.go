@@ -231,9 +231,9 @@ func kubeletCgroupDriverExtraArgs(kubeVersion v1alpha1.KubernetesVersion) (clust
 }
 
 func buildTemplateMapCP(clusterSpec *cluster.Spec) (map[string]interface{}, error) {
-	bundle, err := clusterSpec.GetCPVersionsBundle()
-	if err != nil {
-		return nil, err
+	bundle := clusterSpec.ControlPlaneVersionsBundle()
+	if bundle == nil {
+		return nil, fmt.Errorf("could not find VersionsBundle")
 	}
 	etcdExtraArgs := clusterapi.SecureEtcdTlsCipherSuitesExtraArgs()
 	sharedExtraArgs := clusterapi.SecureTlsCipherSuitesExtraArgs()
@@ -308,14 +308,13 @@ func buildTemplateMapCP(clusterSpec *cluster.Spec) (map[string]interface{}, erro
 }
 
 func buildTemplateMapMD(clusterSpec *cluster.Spec, workerNodeGroupConfiguration v1alpha1.WorkerNodeGroupConfiguration) (map[string]interface{}, error) {
-	bundle, err := clusterSpec.GetCPVersionsBundle()
 	kubeVersion := clusterSpec.Cluster.Spec.KubernetesVersion
 	if workerNodeGroupConfiguration.KubernetesVersion != nil {
-		bundle, err = clusterSpec.GetVersionBundles(*workerNodeGroupConfiguration.KubernetesVersion)
 		kubeVersion = *workerNodeGroupConfiguration.KubernetesVersion
 	}
-	if err != nil {
-		return nil, err
+	bundle := clusterSpec.WorkerNodeGroupVersionsBundle(workerNodeGroupConfiguration)
+	if bundle == nil {
+		return nil, fmt.Errorf("could not find VersionsBundle for worker node")
 	}
 	kubeletExtraArgs := clusterapi.SecureTlsCipherSuitesExtraArgs().
 		Append(clusterapi.WorkerNodeLabelsExtraArgs(workerNodeGroupConfiguration)).
@@ -545,11 +544,8 @@ func getUpdatedKubeConfigContent(content *[]byte, dockerLbPort string) {
 }
 
 func (p *provider) Version(clusterSpec *cluster.Spec) string {
-	vb, err := clusterSpec.GetCPVersionsBundle()
-	if err != nil {
-		return ""
-	}
-	return vb.Docker.Version
+	bundle := clusterSpec.ControlPlaneVersionsBundle()
+	return bundle.Docker.Version
 }
 
 func (p *provider) EnvMap(_ *cluster.Spec) (map[string]string, error) {
@@ -567,10 +563,7 @@ func (p *provider) GetDeployments() map[string][]string {
 }
 
 func (p *provider) GetInfrastructureBundle(clusterSpec *cluster.Spec) *types.InfrastructureBundle {
-	bundle, err := clusterSpec.GetCPVersionsBundle()
-	if err != nil {
-		return nil
-	}
+	bundle := clusterSpec.ControlPlaneVersionsBundle()
 	folderName := fmt.Sprintf("infrastructure-docker/%s/", bundle.Docker.Version)
 
 	infraBundle := types.InfrastructureBundle{
@@ -598,18 +591,16 @@ func (p *provider) ValidateNewSpec(_ context.Context, _ *types.Cluster, _ *clust
 }
 
 func (p *provider) ChangeDiff(currentSpec, newSpec *cluster.Spec) *types.ComponentChangeDiff {
-	cvb, nvb, err := cluster.GetOldAndNewCPVersionBundle(currentSpec, newSpec)
-	if err != nil {
-		return nil
-	}
-	if cvb.Docker.Version == nvb.Docker.Version {
+	currentVersionsBundle := currentSpec.ControlPlaneVersionsBundle()
+	newVersionsBundle := newSpec.ControlPlaneVersionsBundle()
+	if currentVersionsBundle.Docker.Version == newVersionsBundle.Docker.Version {
 		return nil
 	}
 
 	return &types.ComponentChangeDiff{
 		ComponentName: constants.DockerProviderName,
-		NewVersion:    nvb.Docker.Version,
-		OldVersion:    cvb.Docker.Version,
+		NewVersion:    newVersionsBundle.Docker.Version,
+		OldVersion:    currentVersionsBundle.Docker.Version,
 	}
 }
 

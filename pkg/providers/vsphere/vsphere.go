@@ -850,11 +850,8 @@ func (p *vsphereProvider) PostWorkloadInit(ctx context.Context, cluster *types.C
 }
 
 func (p *vsphereProvider) Version(clusterSpec *cluster.Spec) string {
-	vb, err := clusterSpec.GetCPVersionsBundle()
-	if err != nil {
-		return ""
-	}
-	return vb.VSphere.Version
+	bundle := clusterSpec.ControlPlaneVersionsBundle()
+	return bundle.VSphere.Version
 }
 
 func (p *vsphereProvider) EnvMap(_ *cluster.Spec) (map[string]string, error) {
@@ -876,10 +873,7 @@ func (p *vsphereProvider) GetDeployments() map[string][]string {
 }
 
 func (p *vsphereProvider) GetInfrastructureBundle(clusterSpec *cluster.Spec) *types.InfrastructureBundle {
-	bundle, err := clusterSpec.GetCPVersionsBundle()
-	if err != nil {
-		return nil
-	}
+	bundle := clusterSpec.ControlPlaneVersionsBundle()
 	folderName := fmt.Sprintf("infrastructure-vsphere/%s/", bundle.VSphere.Version)
 
 	infraBundle := types.InfrastructureBundle{
@@ -1065,18 +1059,16 @@ func (p *vsphereProvider) secretContentsChanged(ctx context.Context, workloadClu
 }
 
 func (p *vsphereProvider) ChangeDiff(currentSpec, newSpec *cluster.Spec) *types.ComponentChangeDiff {
-	cvb, nvb, err := cluster.GetOldAndNewCPVersionBundle(currentSpec, newSpec)
-	if err != nil {
-		return nil
-	}
-	if cvb.VSphere.Version == nvb.VSphere.Version {
+	currentVersionsBundle := currentSpec.ControlPlaneVersionsBundle()
+	newVersionsBundle := newSpec.ControlPlaneVersionsBundle()
+	if currentVersionsBundle.VSphere.Version == newVersionsBundle.VSphere.Version {
 		return nil
 	}
 
 	return &types.ComponentChangeDiff{
 		ComponentName: constants.VSphereProviderName,
-		NewVersion:    nvb.VSphere.Version,
-		OldVersion:    cvb.VSphere.Version,
+		NewVersion:    newVersionsBundle.VSphere.Version,
+		OldVersion:    currentVersionsBundle.VSphere.Version,
 	}
 }
 
@@ -1089,11 +1081,9 @@ func cpiResourceSetName(clusterSpec *cluster.Spec) string {
 }
 
 func (p *vsphereProvider) UpgradeNeeded(ctx context.Context, newSpec, currentSpec *cluster.Spec, c *types.Cluster) (bool, error) {
-	cvb, nvb, err := cluster.GetOldAndNewCPVersionBundle(currentSpec, newSpec)
-	if err != nil {
-		return false, err
-	}
-	newV, oldV := nvb.VSphere, cvb.VSphere
+	currentVersionsBundle := currentSpec.ControlPlaneVersionsBundle()
+	newVersionsBundle := newSpec.ControlPlaneVersionsBundle()
+	newV, oldV := newVersionsBundle.VSphere, currentVersionsBundle.VSphere
 
 	if newV.Manager.ImageDigest != oldV.Manager.ImageDigest ||
 		newV.KubeVip.ImageDigest != oldV.KubeVip.ImageDigest {

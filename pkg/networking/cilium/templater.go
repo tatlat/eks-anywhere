@@ -40,14 +40,11 @@ func NewTemplater(helm Helm) *Templater {
 }
 
 func (t *Templater) GenerateUpgradePreflightManifest(ctx context.Context, spec *cluster.Spec) ([]byte, error) {
-	vb, err := spec.GetCPVersionsBundle()
-	if err != nil {
-		return nil, err
-	}
+	bundle := spec.ControlPlaneVersionsBundle()
 	v := templateValues(spec)
 	v.set(true, "preflight", "enabled")
-	v.set(vb.Cilium.Cilium.Image(), "preflight", "image", "repository")
-	v.set(vb.Cilium.Cilium.Tag(), "preflight", "image", "tag")
+	v.set(bundle.Cilium.Cilium.Image(), "preflight", "image", "repository")
+	v.set(bundle.Cilium.Cilium.Tag(), "preflight", "image", "tag")
 	v.set(false, "agent")
 	v.set(false, "operator", "enabled")
 
@@ -215,10 +212,7 @@ func (c values) set(value interface{}, path ...string) {
 }
 
 func templateValues(spec *cluster.Spec) values {
-	vb, err := spec.GetCPVersionsBundle()
-	if err != nil {
-		return nil
-	}
+	bundle := spec.ControlPlaneVersionsBundle()
 	val := values{
 		"cni": values{
 			"chainingMode": "portmap",
@@ -233,15 +227,15 @@ func templateValues(spec *cluster.Spec) values {
 		"rollOutCiliumPods": true,
 		"tunnel":            "geneve",
 		"image": values{
-			"repository": vb.Cilium.Cilium.Image(),
-			"tag":        vb.Cilium.Cilium.Tag(),
+			"repository": bundle.Cilium.Cilium.Image(),
+			"tag":        bundle.Cilium.Cilium.Tag(),
 		},
 		"operator": values{
 			"image": values{
 				// The chart expects an "incomplete" repository
 				// and will add the necessary suffix ("-generic" in our case)
-				"repository": strings.TrimSuffix(vb.Cilium.Operator.Image(), "-generic"),
-				"tag":        vb.Cilium.Operator.Tag(),
+				"repository": strings.TrimSuffix(bundle.Cilium.Operator.Image(), "-generic"),
+				"tag":        bundle.Cilium.Operator.Tag(),
 			},
 			"prometheus": values{
 				"enabled": true,
@@ -265,23 +259,16 @@ func templateValues(spec *cluster.Spec) values {
 }
 
 func getChartUriAndVersion(spec *cluster.Spec) (uri, version string) {
-	vb, err := spec.GetCPVersionsBundle()
-	if err != nil {
-		return "", ""
-	}
-
-	chart := vb.Cilium.HelmChart
+	bundle := spec.ControlPlaneVersionsBundle()
+	chart := bundle.Cilium.HelmChart
 	uri = fmt.Sprintf("oci://%s", chart.Image())
 	version = chart.Tag()
 	return uri, version
 }
 
 func getKubeVersion(spec *cluster.Spec) (*semver.Version, error) {
-	vb, err := spec.GetCPVersionsBundle()
-	if err != nil {
-		return nil, err
-	}
-	k8sVersion, err := semver.New(vb.KubeDistro.Kubernetes.Tag)
+	bundle := spec.ControlPlaneVersionsBundle()
+	k8sVersion, err := semver.New(bundle.KubeDistro.Kubernetes.Tag)
 	if err != nil {
 		return nil, fmt.Errorf("parsing kubernetes version %v: %v", spec.Cluster.Spec.KubernetesVersion, err)
 	}

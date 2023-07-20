@@ -894,7 +894,7 @@ func newReconcilerTest(t testing.TB) *reconcilerTest {
 			workloadClusterDatacenter,
 			managementClusterDatacenter,
 			bundle,
-			test.EksdRelease(),
+			test.EksdRelease("1-22"),
 		},
 		cluster:                   cluster,
 		managementCluster:         managementCluster,

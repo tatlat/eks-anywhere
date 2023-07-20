@@ -17,11 +17,8 @@ import (
 )
 
 func generateManifest(reader manifests.FileReader, clusterSpec *cluster.Spec) ([]byte, error) {
-	vb, err := clusterSpec.GetCPVersionsBundle()
-	if err != nil {
-		return nil, err
-	}
-	kindnetdManifest, err := bundles.ReadManifest(reader, vb.Kindnetd.Manifest)
+	bundle := clusterSpec.ControlPlaneVersionsBundle()
+	kindnetdManifest, err := bundles.ReadManifest(reader, bundle.Kindnetd.Manifest)
 	if err != nil {
 		return nil, fmt.Errorf("can't load kindnetd manifest: %v", err)
 	}

@@ -127,7 +127,7 @@ func (d *Dependencies) Close(ctx context.Context) error {
 }
 
 func ForSpec(ctx context.Context, clusterSpec *cluster.Spec) *Factory {
-	vb, _ := clusterSpec.GetCPVersionsBundle()
+	vb := clusterSpec.ControlPlaneVersionsBundle()
 	eksaToolsImage := vb.Eksa.CliTools
 	return NewFactory().
 		UseExecutableImage(eksaToolsImage.VersionedImage()).
@@ -1227,16 +1227,16 @@ func (f *Factory) WithPackageControllerClient(spec *cluster.Spec, kubeConfig str
 		if err != nil {
 			return err
 		}
-		vb, err := spec.GetCPVersionsBundle()
-		if err != nil {
-			return err
+		bundle := spec.ControlPlaneVersionsBundle()
+		if bundle == nil {
+			return fmt.Errorf("could not find VersionsBundle")
 		}
 		f.dependencies.PackageControllerClient = curatedpackages.NewPackageControllerClient(
 			f.dependencies.Helm,
 			f.dependencies.Kubectl,
 			spec.Cluster.Name,
 			mgmtKubeConfig,
-			&vb.PackageController.HelmChart,
+			&bundle.PackageController.HelmChart,
 			f.registryMirror,
 			curatedpackages.WithEksaAccessKeyId(eksaAccessKeyID),
 			curatedpackages.WithEksaSecretAccessKey(eksaSecretKey),

@@ -718,12 +718,10 @@ func (c *ClusterManager) EKSAClusterSpecChanged(ctx context.Context, clus *types
 }
 
 func compareEKSAClusterSpec(ctx context.Context, currentClusterSpec, newClusterSpec *cluster.Spec) (bool, error) {
-	cvb, nvb, err := cluster.GetOldAndNewCPVersionBundle(currentClusterSpec, newClusterSpec)
-	if err != nil {
-		return false, err
-	}
+	currentVersionsBundle := currentClusterSpec.ControlPlaneVersionsBundle()
+	newVersionsBundle := newClusterSpec.ControlPlaneVersionsBundle()
 
-	if cvb.EksD.Name != nvb.EksD.Name {
+	if currentVersionsBundle.EksD.Name != newVersionsBundle.EksD.Name {
 		logger.V(3).Info("New eks-d release detected")
 		return true, nil
 	}

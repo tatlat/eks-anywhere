@@ -68,27 +68,24 @@ func BuildSpecFromConfig(ctx context.Context, client Client, config *Config) (*S
 	return NewSpec(config, bundles, eksdReleases)
 }
 
-func fetchAllEksdReleases(ctx context.Context, client Client, cluster *v1alpha1.Cluster, bundles *v1alpha1release.Bundles) (map[v1alpha1.KubernetesVersion]*eksdv1alpha1.Release, error) {
-	m := make(map[v1alpha1.KubernetesVersion]*eksdv1alpha1.Release)
+func fetchAllEksdReleases(ctx context.Context, client Client, cluster *v1alpha1.Cluster, bundles *v1alpha1release.Bundles) ([]eksdv1alpha1.Release, error) {
+	m := make([]eksdv1alpha1.Release, 0)
 
 	version := cluster.Spec.KubernetesVersion
 	eksd, err := getEksdRelease(ctx, client, version, bundles)
-	if err != nil {
+	if err != nil && eksd == nil {
 		return nil, err
 	}
-	m[version] = eksd
+	m = append(m, *eksd)
 
 	for _, wng := range cluster.Spec.WorkerNodeGroupConfigurations {
 		if wng.KubernetesVersion != nil {
 			version := *wng.KubernetesVersion
-			if _, ok := m[version]; ok {
-				continue
-			}
 			eksd, err = getEksdRelease(ctx, client, version, bundles)
 			if err != nil {
 				return nil, err
 			}
-			m[version] = eksd
+			m = append(m, *eksd)
 		}
 	}
 

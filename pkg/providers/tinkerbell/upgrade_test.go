@@ -72,14 +72,14 @@ func TestProviderPreCoreComponentsUpgrade_StackUpgradeError(t *testing.T) {
 	tconfig := NewPreCoreComponentsUpgradeTestConfig(t)
 
 	expect := "foobar"
-	vb, err := tconfig.ClusterSpec.GetCPVersionsBundle()
-	if err != nil {
+	bundle := tconfig.ClusterSpec.ControlPlaneVersionsBundle()
+	if bundle == nil {
 		t.Error("Can't get VersionsBundle")
 	}
 	tconfig.Installer.EXPECT().
 		Upgrade(
 			gomock.Any(),
-			vb.Tinkerbell,
+			bundle.Tinkerbell,
 			tconfig.DatacenterConfig.Spec.TinkerbellIP,
 			tconfig.Management.KubeconfigFile,
 			tconfig.DatacenterConfig.Spec.HookImagesURLPath,
@@ -100,15 +100,15 @@ func TestProviderPreCoreComponentsUpgrade_StackUpgradeError(t *testing.T) {
 func TestProviderPreCoreComponentsUpgrade_HasBaseboardManagementCRDError(t *testing.T) {
 	tconfig := NewPreCoreComponentsUpgradeTestConfig(t)
 
-	vb, err := tconfig.ClusterSpec.GetCPVersionsBundle()
-	if err != nil {
+	bundle := tconfig.ClusterSpec.ControlPlaneVersionsBundle()
+	if bundle == nil {
 		t.Error("Can't get VersionsBundle")
 	}
 
 	tconfig.Installer.EXPECT().
 		Upgrade(
 			gomock.Any(),
-			vb.Tinkerbell,
+			bundle.Tinkerbell,
 			tconfig.TinkerbellIP,
 			tconfig.Management.KubeconfigFile,
 			tconfig.DatacenterConfig.Spec.HookImagesURLPath,
@@ -138,15 +138,15 @@ func TestProviderPreCoreComponentsUpgrade_HasBaseboardManagementCRDError(t *test
 func TestProviderPreCoreComponentsUpgrade_NoBaseboardManagementCRD(t *testing.T) {
 	tconfig := NewPreCoreComponentsUpgradeTestConfig(t)
 
-	vb, err := tconfig.ClusterSpec.GetCPVersionsBundle()
-	if err != nil {
-		t.Error("Can't get VersionsBundle")
+	bundle := tconfig.ClusterSpec.ControlPlaneVersionsBundle()
+	if bundle == nil {
+		t.Error("could not find VersionsBundle")
 	}
 
 	tconfig.Installer.EXPECT().
 		Upgrade(
 			gomock.Any(),
-			vb.Tinkerbell,
+			bundle.Tinkerbell,
 			tconfig.TinkerbellIP,
 			tconfig.Management.KubeconfigFile,
 			tconfig.DatacenterConfig.Spec.HookImagesURLPath,
@@ -450,8 +450,8 @@ func TestProviderPreCoreComponentsUpgrade_RufioConversions(t *testing.T) {
 		t.Run(tc.Name, func(t *testing.T) {
 			tconfig := NewPreCoreComponentsUpgradeTestConfig(t)
 
-			vb, err := tconfig.ClusterSpec.GetCPVersionsBundle()
-			if err != nil {
+			bundle := tconfig.ClusterSpec.ControlPlaneVersionsBundle()
+			if bundle == nil {
 				t.Error("Can't get VersionsBundle")
 			}
 
@@ -460,7 +460,7 @@ func TestProviderPreCoreComponentsUpgrade_RufioConversions(t *testing.T) {
 			tconfig.Installer.EXPECT().
 				Upgrade(
 					gomock.Any(),
-					vb.Tinkerbell,
+					bundle.Tinkerbell,
 					tconfig.DatacenterConfig.Spec.TinkerbellIP,
 					tconfig.Management.KubeconfigFile,
 					tconfig.DatacenterConfig.Spec.HookImagesURLPath,
@@ -625,12 +625,12 @@ func (t *PreCoreComponentsUpgradeTestConfig) GetProvider() (*Provider, error) {
 
 // WithStackUpgrade configures t mocks to get successfully reach Rufio CRD conversion.
 func (t *PreCoreComponentsUpgradeTestConfig) WithStackUpgrade() *PreCoreComponentsUpgradeTestConfig {
-	vb, _ := t.ClusterSpec.GetCPVersionsBundle()
+	bundle := t.ClusterSpec.ControlPlaneVersionsBundle()
 
 	t.Installer.EXPECT().
 		Upgrade(
 			gomock.Any(),
-			vb.Tinkerbell,
+			bundle.Tinkerbell,
 			t.TinkerbellIP,
 			t.Management.KubeconfigFile,
 			t.DatacenterConfig.Spec.HookImagesURLPath,

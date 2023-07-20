@@ -29,16 +29,12 @@ func Namespace(name string) *corev1.Namespace {
 	}
 }
 
-// EksdReleasesMap returns a test release map for unit testing.
-func EksdReleasesMap() map[anywherev1.KubernetesVersion]*eksdv1.Release {
-	return map[anywherev1.KubernetesVersion]*eksdv1.Release{
-		anywherev1.Kube118: EksdRelease(),
-		anywherev1.Kube119: EksdRelease(),
-		anywherev1.Kube120: EksdRelease(),
-		anywherev1.Kube121: EksdRelease(),
-		anywherev1.Kube122: EksdRelease(),
-		anywherev1.Kube123: EksdRelease(),
-		anywherev1.Kube124: EksdRelease(),
+// EksdReleases returns a test release slice for unit testing.
+func EksdReleases() []eksdv1.Release {
+	return []eksdv1.Release{
+		*EksdRelease("1-19"),
+		*EksdRelease("1-22"),
+		*EksdRelease("1-24"),
 	}
 }
 
@@ -74,7 +70,7 @@ func VersionBundle() *cluster.VersionsBundle {
 }
 
 // EksdRelease returns a test release struct for unit testing.
-func EksdRelease() *eksdv1.Release {
+func EksdRelease(channel string) *eksdv1.Release {
 	return &eksdv1.Release{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Release",
@@ -85,7 +81,8 @@ func EksdRelease() *eksdv1.Release {
 			Namespace: "eksa-system",
 		},
 		Spec: eksdv1.ReleaseSpec{
-			Number: 1,
+			Number:  1,
+			Channel: channel,
 		},
 		Status: eksdv1.ReleaseStatus{
 			Components: []eksdv1.Component{

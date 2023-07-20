@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	eksdv1 "github.com/aws/eks-distro-build-tooling/release/api/v1alpha1"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/assert"
@@ -909,8 +910,9 @@ func TestClusterManagerUpgradeWorkloadClusterAWSIamConfigSuccess(t *testing.T) {
 	tt.oldClusterConfig.Spec.IdentityProviderRefs = []v1alpha1.Ref{{Kind: v1alpha1.AWSIamConfigKind, Name: oldIamConfig.Name}}
 	tt.newClusterConfig = tt.oldClusterConfig.DeepCopy()
 
-	r := test.EksdReleasesMap()
-	r[v1alpha1.Kube119].ResourceVersion = "999"
+	r := []eksdv1.Release{
+		*test.EksdRelease("1-19"),
+	}
 
 	config := &cluster.Config{
 		Cluster:               tt.oldClusterConfig,
@@ -1711,8 +1713,6 @@ func TestClusterManagerCreateEKSAResourcesSuccess(t *testing.T) {
 	features.ClearCache()
 	ctx := context.Background()
 	tt := newTest(t)
-	// tt.clusterSpec.VersionsBundle.EksD.Components = "testdata/eksa_components.yaml"
-	// tt.clusterSpec.VersionsBundle.EksD.EksDReleaseUrl = "testdata/eksa_components.yaml"
 
 	datacenterConfig := &v1alpha1.VSphereDatacenterConfig{}
 	machineConfigs := []providers.MachineConfig{}
@@ -1733,8 +1733,6 @@ func TestClusterManagerCreateEKSAResourcesFailure(t *testing.T) {
 	features.ClearCache()
 	ctx := context.Background()
 	tt := newTest(t)
-	// tt.clusterSpec.VersionsBundle.EksD.Components = "testdata/eksa_components.yaml"
-	// tt.clusterSpec.VersionsBundle.EksD.EksDReleaseUrl = "testdata/eksa_components.yaml"
 	tt.clusterSpec.Cluster.Namespace = "test_namespace"
 
 	datacenterConfig := &v1alpha1.VSphereDatacenterConfig{}
@@ -2376,10 +2374,14 @@ func newSpecChangedTest(t *testing.T, opts ...clustermanager.ClusterManagerOpt) 
 		AWSIAMConfigs:         map[string]*v1alpha1.AWSIamConfig{},
 	}
 
-	r := test.EksdReleasesMap()
-	r[v1alpha1.Kube119].ResourceVersion = "999"
+	r := []eksdv1.Release{
+		*test.EksdRelease("1-19"),
+	}
 
-	cs, _ := cluster.NewSpec(config, b, r)
+	cs, err := cluster.NewSpec(config, b, r)
+	if err != nil {
+		t.Fatalf("could not create clusterSpec")
+	}
 	changedTest.clusterSpec = cs
 
 	return changedTest
@@ -2533,7 +2535,7 @@ func newClusterManager(t *testing.T, opts ...clustermanager.ClusterManagerOpt) (
 		},
 	}
 	b := test.Bundle()
-	r := test.EksdRelease()
+	r := test.EksdRelease("1-19")
 	ac := &v1alpha1.AWSIamConfig{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: clusterName,

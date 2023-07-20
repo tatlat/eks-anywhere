@@ -98,12 +98,13 @@ func (i *EKSAInstaller) Upgrade(ctx context.Context, log logr.Logger, c *types.C
 		return nil, nil
 	}
 	log.V(1).Info("Starting EKS-A components upgrade")
-	ovb, nvb, err := cluster.GetOldAndNewCPVersionBundle(currentSpec, newSpec)
-	if err != nil {
-		return nil, err
+	oldVersionsBundle := currentSpec.ControlPlaneVersionsBundle()
+	newVersionsBundle := newSpec.ControlPlaneVersionsBundle()
+	if oldVersionsBundle == nil || newVersionsBundle == nil {
+		return nil, fmt.Errorf("could not find VersionsBundle")
 	}
-	oldVersion := ovb.Eksa.Version
-	newVersion := nvb.Eksa.Version
+	oldVersion := oldVersionsBundle.Eksa.Version
+	newVersion := newVersionsBundle.Eksa.Version
 	if err := i.Install(ctx, log, c, newSpec); err != nil {
 		return nil, fmt.Errorf("upgrading EKS-A components from version %v to version %v: %v", oldVersion, newVersion, err)
 	}
@@ -187,11 +188,8 @@ func fullLifeCycleControllerForProvider(cluster *anywherev1.Cluster) bool {
 }
 
 func (g *EKSAComponentGenerator) parseEKSAComponentsSpec(spec *cluster.Spec) (*eksaComponents, error) {
-	vb, err := spec.GetCPVersionsBundle()
-	if err != nil {
-		return nil, err
-	}
-	componentsManifest, err := bundles.ReadManifest(g.reader, vb.Eksa.Components)
+	bundle := spec.ControlPlaneVersionsBundle()
+	componentsManifest, err := bundles.ReadManifest(g.reader, bundle.Eksa.Components)
 	if err != nil {
 		return nil, fmt.Errorf("loading manifest for eksa components: %v", err)
 	}
@@ -238,18 +236,19 @@ func (c *eksaComponents) BuildFromParsed(lookup yamlutil.ObjectLookup) error {
 
 // EksaChangeDiff computes the version diff in eksa components between two specs.
 func EksaChangeDiff(currentSpec, newSpec *cluster.Spec) *types.ChangeDiff {
-	ovb, nvb, err := cluster.GetOldAndNewCPVersionBundle(currentSpec, newSpec)
-	if err != nil {
+	oldVersionsBundle := currentSpec.ControlPlaneVersionsBundle()
+	newVersionsBundle := newSpec.ControlPlaneVersionsBundle()
+	if oldVersionsBundle == nil || newVersionsBundle == nil {
 		return nil
 	}
 
-	if ovb.Eksa.Version != nvb.Eksa.Version {
+	if oldVersionsBundle.Eksa.Version != newVersionsBundle.Eksa.Version {
 		return &types.ChangeDiff{
 			ComponentReports: []types.ComponentChangeDiff{
 				{
 					ComponentName: "EKS-A",
-					NewVersion:    nvb.Eksa.Version,
-					OldVersion:    ovb.Eksa.Version,
+					NewVersion:    newVersionsBundle.Eksa.Version,
+					OldVersion:    oldVersionsBundle.Eksa.Version,
 				},
 			},
 		}

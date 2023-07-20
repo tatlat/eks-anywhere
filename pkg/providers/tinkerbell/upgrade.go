@@ -378,16 +378,13 @@ func (p *Provider) PreCoreComponentsUpgrade(
 		return errors.New("cluster spec is nil")
 	}
 
-	vb, err := clusterSpec.GetCPVersionsBundle()
-	if err != nil {
-		return nil
-	}
+	bundle := clusterSpec.ControlPlaneVersionsBundle()
 
 	// Attempt the upgrade. This should upgrade the stack in the mangement cluster by updating
 	// images, installing new CRDs and possibly removing old ones.
-	err = p.stackInstaller.Upgrade(
+	err := p.stackInstaller.Upgrade(
 		ctx,
-		vb.Tinkerbell,
+		bundle.Tinkerbell,
 		p.datacenterConfig.Spec.TinkerbellIP,
 		cluster.KubeconfigFile,
 		p.datacenterConfig.Spec.HookImagesURLPath,

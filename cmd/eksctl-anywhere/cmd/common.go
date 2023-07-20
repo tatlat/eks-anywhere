@@ -20,8 +20,8 @@ func getImages(clusterSpecPath, bundlesOverride string) ([]v1alpha1.Image, error
 	if err != nil {
 		return nil, err
 	}
-	bundle, err := clusterSpec.GetCPVersionsBundle()
-	if err != nil {
+	bundle := clusterSpec.ControlPlaneVersionsBundle()
+	if bundle == nil {
 		return nil, err
 	}
 	images := append(bundle.Images(), clusterSpec.KubeDistroImages()...)

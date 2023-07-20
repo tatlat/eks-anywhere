@@ -60,11 +60,8 @@ func (vs *VsphereTemplateBuilder) GenerateCAPISpecControlPlane(
 	return bytes, nil
 }
 
-func (vs *VsphereTemplateBuilder) isCgroupDriverSystemd(clusterSpec *cluster.Spec) (bool, error) {
-	bundle, err := clusterSpec.GetCPVersionsBundle()
-	if err != nil {
-		return false, err
-	}
+func (vs *VsphereTemplateBuilder) isCgroupDriverSystemd(clusterSpec *cluster.Spec, worker anywherev1.WorkerNodeGroupConfiguration) (bool, error) {
+	bundle := clusterSpec.WorkerNodeGroupVersionsBundle(worker)
 	k8sVersion, err := semver.New(bundle.KubeDistro.Kubernetes.Tag)
 	if err != nil {
 		return false, fmt.Errorf("parsing kubernetes version %v: %v", bundle.KubeDistro.Kubernetes.Tag, err)
@@ -88,16 +85,15 @@ func (vs *VsphereTemplateBuilder) GenerateCAPISpecWorkers(
 	workloadTemplateNames,
 	kubeadmconfigTemplateNames map[string]string,
 ) (content []byte, err error) {
-	// pin cgroupDriver to systemd for k8s >= 1.21 when generating template in controller
-	// remove this check once the controller supports order upgrade.
-	// i.e. control plane, etcd upgrade before worker nodes.
-	cgroupDriverSystemd, err := vs.isCgroupDriverSystemd(clusterSpec)
-	if err != nil {
-		return nil, err
-	}
-
 	workerSpecs := make([][]byte, 0, len(clusterSpec.Cluster.Spec.WorkerNodeGroupConfigurations))
 	for _, workerNodeGroupConfiguration := range clusterSpec.Cluster.Spec.WorkerNodeGroupConfigurations {
+		// pin cgroupDriver to systemd for k8s >= 1.21 when generating template in controller
+		// remove this check once the controller supports order upgrade.
+		// i.e. control plane, etcd upgrade before worker nodes.
+		cgroupDriverSystemd, err := vs.isCgroupDriverSystemd(clusterSpec, workerNodeGroupConfiguration)
+		if err != nil {
+			return nil, err
+		}
 		values, err := buildTemplateMapMD(
 			clusterSpec,
 			clusterSpec.VSphereDatacenter.Spec,
@@ -128,9 +124,9 @@ func buildTemplateMapCP(
 	datacenterSpec anywherev1.VSphereDatacenterConfigSpec,
 	controlPlaneMachineSpec, etcdMachineSpec anywherev1.VSphereMachineConfigSpec,
 ) (map[string]interface{}, error) {
-	bundle, err := clusterSpec.GetCPVersionsBundle()
-	if err != nil {
-		return nil, err
+	bundle := clusterSpec.ControlPlaneVersionsBundle()
+	if bundle == nil {
+		return nil, fmt.Errorf("could not find VersionsBundle")
 	}
 	format := "cloud-config"
 	etcdExtraArgs := clusterapi.SecureEtcdTlsCipherSuitesExtraArgs()
@@ -338,12 +334,9 @@ func buildTemplateMapMD(
 	workerNodeGroupMachineSpec anywherev1.VSphereMachineConfigSpec,
 	workerNodeGroupConfiguration anywherev1.WorkerNodeGroupConfiguration,
 ) (map[string]interface{}, error) {
-	bundle, err := clusterSpec.GetCPVersionsBundle()
-	if workerNodeGroupConfiguration.KubernetesVersion != nil {
-		bundle, err = clusterSpec.GetVersionBundles(*workerNodeGroupConfiguration.KubernetesVersion)
-	}
-	if err != nil {
-		return nil, err
+	bundle := clusterSpec.WorkerNodeGroupVersionsBundle(workerNodeGroupConfiguration)
+	if bundle == nil {
+		return nil, fmt.Errorf("could not find VersionsBundle")
 	}
 	format := "cloud-config"
 	kubeletExtraArgs := clusterapi.SecureTlsCipherSuitesExtraArgs().

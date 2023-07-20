@@ -65,8 +65,8 @@ func listOvas(context context.Context, clusterSpecPath, bundlesOverride string) 
 		return err
 	}
 
-	bundle, err := clusterSpec.GetCPVersionsBundle()
-	if err != nil {
+	bundle := clusterSpec.ControlPlaneVersionsBundle()
+	if bundle == nil {
 		return err
 	}
 

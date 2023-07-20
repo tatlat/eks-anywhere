@@ -76,8 +76,8 @@ func importImages(ctx context.Context, clusterSpecPath string) error {
 
 	de := executables.BuildDockerExecutable()
 
-	bundle, err := clusterSpec.GetCPVersionsBundle()
-	if err != nil {
+	bundle := clusterSpec.ControlPlaneVersionsBundle()
+	if bundle == nil {
 		return err
 	}
 	executableBuilder, closer, err := executables.InitInDockerExecutablesBuilder(ctx, bundle.Eksa.CliTools.VersionedImage())

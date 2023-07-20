@@ -42,16 +42,6 @@ func newPackageInstallerTest(t *testing.T) *packageInstallerTest {
 				},
 			},
 		},
-		// VersionsBundle: &cluster.VersionsBundle{
-		// 	VersionsBundle: &v1alpha1.VersionsBundle{
-		// 		PackageController: v1alpha1.PackageBundle{
-		// 			HelmChart: v1alpha1.Image{
-		// 				URI:  "test_registry/test/eks-anywhere-packages:v1",
-		// 				Name: "test_chart",
-		// 			},
-		// 		},
-		// 	},
-		// },
 	}
 	kubeConfigPath := kubeconfig.FromClusterName(spec.Cluster.Name)
 	return &packageInstallerTest{

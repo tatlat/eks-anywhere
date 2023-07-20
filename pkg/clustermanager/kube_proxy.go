@@ -185,12 +185,9 @@ func (u KubeProxyUpgrader) PrepareForUpgrade(ctx context.Context, log logr.Logge
 		return errors.Wrap(err, "reading the kubeadm control plane for an upgrade")
 	}
 
-	vb, err := spec.GetCPVersionsBundle()
-	if err != nil {
-		return err
-	}
+	bundle := spec.ControlPlaneVersionsBundle()
 
-	_, newVersion := oci.Split(vb.KubeDistro.KubeProxy.URI)
+	_, newVersion := oci.Split(bundle.KubeDistro.KubeProxy.URI)
 
 	// If the new spec doesn't include the new kube-proxy or if the current cluster already has it, skip this
 	if needsPrepare, err := needsKubeProxyPreUpgrade(spec, kcp); err != nil {
@@ -280,11 +277,8 @@ func (u KubeProxyUpgrader) CleanupAfterUpgrade(ctx context.Context, log logr.Log
 }
 
 func specIncludesNewKubeProxy(spec *cluster.Spec) bool {
-	vb, err := spec.GetCPVersionsBundle()
-	if err != nil {
-		return false
-	}
-	return eksdIncludesNewKubeProxy(spec.Cluster.Spec.KubernetesVersion, vb.KubeDistro.EKSD.Number)
+	bundle := spec.ControlPlaneVersionsBundle()
+	return eksdIncludesNewKubeProxy(spec.Cluster.Spec.KubernetesVersion, bundle.KubeDistro.EKSD.Number)
 }
 
 func eksdIncludesNewKubeProxy(version anywherev1.KubernetesVersion, number int) bool {
@@ -494,11 +488,8 @@ func updateKubeProxyVersion(ctx context.Context, client kubernetes.Client, kubeP
 }
 
 func (u KubeProxyUpgrader) ensureUpdateKubeProxyVersion(ctx context.Context, log logr.Logger, client kubernetes.Client, spec *cluster.Spec) error {
-	vb, err := spec.GetCPVersionsBundle()
-	if err != nil {
-		return err
-	}
-	newKubeProxyImage := vb.KubeDistro.KubeProxy.URI
+	bundle := spec.ControlPlaneVersionsBundle()
+	newKubeProxyImage := bundle.KubeDistro.KubeProxy.URI
 	return retrier.Retry(u.updateKubeProxyRetries, u.updateKubeProxyBackoff, func() error {
 		kubeProxy, err := getKubeProxy(ctx, client)
 		if err != nil {

@@ -24,7 +24,7 @@ func TestNewSpecError(t *testing.T) {
 		name        string
 		config      *cluster.Config
 		bundles     *releasev1.Bundles
-		eksdRelease map[anywherev1.KubernetesVersion]*eksdv1.Release
+		eksdRelease []eksdv1.Release
 		error       string
 	}{
 		{
@@ -41,10 +41,14 @@ func TestNewSpecError(t *testing.T) {
 					Number: 2,
 				},
 			},
-			eksdRelease: map[anywherev1.KubernetesVersion]*eksdv1.Release{
-				anywherev1.Kube119: {},
+			eksdRelease: []eksdv1.Release{
+				{
+					Spec: eksdv1.ReleaseSpec{
+						Channel: "1-19",
+					},
+				},
 			},
-			error: "kubernetes version 1.24 is not supported by bundles manifest 2",
+			error: "kubernetes version 1.19 is not supported by bundles manifest 2",
 		},
 	}
 
@@ -60,14 +64,14 @@ func TestNewSpecError(t *testing.T) {
 
 func TestNewSpecValid(t *testing.T) {
 	g := NewWithT(t)
-	kube124 := anywherev1.KubernetesVersion("1.24")
+	kube119 := anywherev1.KubernetesVersion("1.19")
 	config := &cluster.Config{
 		Cluster: &anywherev1.Cluster{
 			Spec: anywherev1.ClusterSpec{
-				KubernetesVersion: kube124,
+				KubernetesVersion: kube119,
 				WorkerNodeGroupConfigurations: []anywherev1.WorkerNodeGroupConfiguration{
 					{
-						KubernetesVersion: &kube124,
+						KubernetesVersion: &kube119,
 					},
 				},
 			},
@@ -84,12 +88,14 @@ func TestNewSpecValid(t *testing.T) {
 			Number: 2,
 			VersionsBundles: []releasev1.VersionsBundle{
 				{
-					KubeVersion: "1.24",
+					KubeVersion: "1.19",
 				},
 			},
 		},
 	}
-	eksd := test.EksdReleasesMap()
+	eksd := []eksdv1.Release{
+		*test.EksdRelease("1-19"),
+	}
 
 	spec, err := cluster.NewSpec(config, bundles, eksd)
 	g.Expect(err).NotTo(HaveOccurred())
@@ -105,7 +111,9 @@ func TestSpecDeepCopy(t *testing.T) {
 	config, err := cluster.ParseConfig(yaml)
 	g.Expect(err).To(Succeed())
 	bundles := test.Bundles(t)
-	eksd := test.EksdReleasesMap()
+	eksd := []eksdv1.Release{
+		*test.EksdRelease("1-19"),
+	}
 	spec, err := cluster.NewSpec(config, bundles, eksd)
 	g.Expect(err).To(Succeed())
 
@@ -179,8 +187,8 @@ func TestBundlesRefDefaulter(t *testing.T) {
 }
 
 func validateSpecFromSimpleBundle(t *testing.T, gotSpec *cluster.Spec) {
-	VersionsBundle, err := gotSpec.GetCPVersionsBundle()
-	if err != nil {
+	VersionsBundle := gotSpec.ControlPlaneVersionsBundle()
+	if VersionsBundle == nil {
 		t.Errorf("Could not get VersionsBundle")
 	}
 	validateVersionedRepo(t, VersionsBundle.KubeDistro.Kubernetes, "public.ecr.aws/eks-distro/kubernetes", "v1.19.8-eks-1-19-4")
@@ -217,14 +225,17 @@ func TestKubeDistroImagesErrorEksd(t *testing.T) {
 			Number: 2,
 			VersionsBundles: []releasev1.VersionsBundle{
 				{
-					KubeVersion: "1.24",
+					KubeVersion: "1.19",
 				},
 			},
 		},
 	}
-	eksd := test.EksdReleasesMap()
+	eksd := []eksdv1.Release{
+		*test.EksdRelease("1-19"),
+	}
 
-	spec, _ := cluster.NewSpec(config, bundles, eksd)
+	spec, err := cluster.NewSpec(config, bundles, eksd)
+	g.Expect(err).To(BeNil())
 	images := spec.KubeDistroImages()
 	g.Expect(len(images)).To(BeZero())
 }
@@ -254,7 +265,10 @@ func TestKubeDistroImagesErrorVersionsBundle(t *testing.T) {
 			},
 		},
 	}
-	eksd := test.EksdReleasesMap()
+	eksdRelease := *test.EksdRelease("1-24")
+	eksd := []eksdv1.Release{
+		eksdRelease,
+	}
 
 	spec, _ := cluster.NewSpec(config, bundles, eksd)
 	spec.VersionsBundles["1.24"] = nil
@@ -293,7 +307,7 @@ func TestGetVersionsBundleWorkerError(t *testing.T) {
 			},
 		},
 	}
-	eksd := test.EksdReleasesMap()
+	eksd := test.EksdReleases()
 
 	_, err := cluster.NewSpec(config, bundles, eksd)
 	g.Expect(err).ToNot(BeNil())
@@ -324,11 +338,14 @@ func TestGetVersionsBundleNotFound(t *testing.T) {
 			},
 		},
 	}
-	eksd := test.EksdReleasesMap()
+	eksd := []eksdv1.Release{
+		*test.EksdRelease("1-24"),
+	}
 
-	spec, _ := cluster.NewSpec(config, bundles, eksd)
-	_, err := spec.GetVersionBundles("1.22")
-	g.Expect(err).ToNot(BeNil())
+	spec, err := cluster.NewSpec(config, bundles, eksd)
+	g.Expect(err).To(Succeed())
+	vb := spec.VersionBundles("1.22")
+	g.Expect(vb).To(BeNil())
 }
 
 func TestGetVersionsBundlesErrorEksdEmpty(t *testing.T) {
@@ -363,7 +380,7 @@ func TestGetVersionsBundlesErrorEksdEmpty(t *testing.T) {
 		},
 	}
 
-	_, err := cluster.NewSpec(config, bundles, map[anywherev1.KubernetesVersion]*eksdv1.Release{})
+	_, err := cluster.NewSpec(config, bundles, []eksdv1.Release{})
 	g.Expect(err).ToNot(BeNil())
 }
 
@@ -398,8 +415,8 @@ func TestGetVersionsBundlesErrorInvalidEksd(t *testing.T) {
 			},
 		},
 	}
-	eksd := map[anywherev1.KubernetesVersion]*eksdv1.Release{
-		"1.24": {
+	eksd := []eksdv1.Release{
+		{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       "Release",
 				APIVersion: "distro.eks.amazonaws.com/v1alpha1",
@@ -409,7 +426,8 @@ func TestGetVersionsBundlesErrorInvalidEksd(t *testing.T) {
 				Namespace: "eksa-system",
 			},
 			Spec: eksdv1.ReleaseSpec{
-				Number: 1,
+				Number:  1,
+				Channel: "1-24",
 			},
 			Status: eksdv1.ReleaseStatus{
 				Components: []eksdv1.Component{
@@ -422,46 +440,6 @@ func TestGetVersionsBundlesErrorInvalidEksd(t *testing.T) {
 	}
 
 	_, err := cluster.NewSpec(config, bundles, eksd)
-	g.Expect(err).ToNot(BeNil())
-}
-
-func TestGetOldAndNewCPVersion(t *testing.T) {
-	g := NewWithT(t)
-	old := &cluster.Spec{
-		Config: &cluster.Config{
-			Cluster: &anywherev1.Cluster{
-				Spec: anywherev1.ClusterSpec{
-					KubernetesVersion: anywherev1.Kube119,
-				},
-			},
-		},
-		VersionsBundles: test.VersionsBundlesMap(),
-	}
-	new := old.DeepCopy()
-
-	_, _, err := cluster.GetOldAndNewCPVersionBundle(old, new)
-	g.Expect(err).To(BeNil())
-}
-
-func TestGetOldAndNewCPVersionError(t *testing.T) {
-	g := NewWithT(t)
-	old := &cluster.Spec{
-		Config: &cluster.Config{
-			Cluster: &anywherev1.Cluster{
-				Spec: anywherev1.ClusterSpec{
-					KubernetesVersion: anywherev1.Kube119,
-				},
-			},
-		},
-		VersionsBundles: make(map[anywherev1.KubernetesVersion]*cluster.VersionsBundle),
-	}
-	new := old.DeepCopy()
-
-	_, _, err := cluster.GetOldAndNewCPVersionBundle(old, new)
-	g.Expect(err).ToNot(BeNil())
-
-	old.VersionsBundles = test.VersionsBundlesMap()
-	_, _, err = cluster.GetOldAndNewCPVersionBundle(old, new)
 	g.Expect(err).ToNot(BeNil())
 }
 

@@ -38,14 +38,11 @@ func (t *TemplateBuilder) GenerateManifest(clusterSpec *cluster.Spec, clusterID 
 		clusterIDValue = clusterID.String()
 	}
 
-	vb, err := clusterSpec.GetCPVersionsBundle()
-	if err != nil {
-		return nil, err
-	}
+	bundle := clusterSpec.ControlPlaneVersionsBundle()
 
 	data := map[string]interface{}{
-		"image":              vb.KubeDistro.AwsIamAuthImage.VersionedImage(),
-		"initContainerImage": vb.Eksa.DiagnosticCollector.VersionedImage(),
+		"image":              bundle.KubeDistro.AwsIamAuthImage.VersionedImage(),
+		"initContainerImage": bundle.Eksa.DiagnosticCollector.VersionedImage(),
 		"awsRegion":          clusterSpec.AWSIamConfig.Spec.AWSRegion,
 		"clusterID":          clusterIDValue,
 		"backendMode":        strings.Join(clusterSpec.AWSIamConfig.Spec.BackendMode, ","),

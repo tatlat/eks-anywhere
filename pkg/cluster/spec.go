@@ -38,7 +38,7 @@ type VersionsBundle struct {
 }
 
 func deepCopyVersionsBundles(v map[eksav1alpha1.KubernetesVersion]*VersionsBundle) map[eksav1alpha1.KubernetesVersion]*VersionsBundle {
-	m := make(map[eksav1alpha1.KubernetesVersion]*VersionsBundle)
+	m := make(map[eksav1alpha1.KubernetesVersion]*VersionsBundle, len(v))
 	for key, val := range v {
 		m[key] = &VersionsBundle{
 			VersionsBundle: val.VersionsBundle.DeepCopy(),
@@ -83,7 +83,7 @@ type VersionedRepository struct {
 }
 
 // NewSpec builds a new [Spec].
-func NewSpec(config *Config, bundles *v1alpha1.Bundles, eksdReleases map[eksav1alpha1.KubernetesVersion]*eksdv1alpha1.Release) (*Spec, error) {
+func NewSpec(config *Config, bundles *v1alpha1.Bundles, eksdReleases []eksdv1alpha1.Release) (*Spec, error) {
 	s := &Spec{}
 
 	s.Bundles = bundles
@@ -114,8 +114,8 @@ func NewSpec(config *Config, bundles *v1alpha1.Bundles, eksdReleases map[eksav1a
 
 func (s *Spec) KubeDistroImages() []v1alpha1.Image {
 	images := []v1alpha1.Image{}
-	vb, err := s.GetCPVersionsBundle()
-	if err != nil || vb == nil {
+	vb := s.ControlPlaneVersionsBundle()
+	if vb == nil {
 		return images
 	}
 	eksdRelease, err := bundles.ReadEKSD(files.NewReader(), *vb.VersionsBundle)
@@ -132,39 +132,36 @@ func (s *Spec) KubeDistroImages() []v1alpha1.Image {
 	return images
 }
 
-func getAllVersionsBundles(cluster *eksav1alpha1.Cluster, bundles *v1alpha1.Bundles, eksdReleases map[eksav1alpha1.KubernetesVersion]*eksdv1alpha1.Release) (map[eksav1alpha1.KubernetesVersion]*VersionsBundle, error) {
-	m := make(map[eksav1alpha1.KubernetesVersion]*VersionsBundle)
-	version := cluster.Spec.KubernetesVersion
-	vb, err := getVersionBundles(version, bundles, eksdReleases)
-	if err != nil {
-		return nil, err
+func getAllVersionsBundles(cluster *eksav1alpha1.Cluster, bundles *v1alpha1.Bundles, eksdReleases []eksdv1alpha1.Release) (map[eksav1alpha1.KubernetesVersion]*VersionsBundle, error) {
+	if len(eksdReleases) < 1 {
+		return nil, fmt.Errorf("no eksd releases were found")
 	}
-	m[version] = vb
-	for _, wng := range cluster.Spec.WorkerNodeGroupConfigurations {
-		if wng.KubernetesVersion != nil {
-			version := *wng.KubernetesVersion
-			if _, ok := m[version]; ok {
-				continue
-			}
-			vb, err = getVersionBundles(version, bundles, eksdReleases)
-			if err != nil {
-				return nil, err
-			}
-			m[version] = vb
+
+	m := make(map[eksav1alpha1.KubernetesVersion]*VersionsBundle, len(eksdReleases))
+
+	for _, eksd := range eksdReleases {
+		channel := strings.Replace(eksd.Spec.Channel, "-", ".", 1)
+		version := eksav1alpha1.KubernetesVersion(channel)
+
+		if _, ok := m[version]; ok {
+			continue
 		}
+
+		versionBundle, err := getVersionBundles(version, bundles, &eksd)
+		if err != nil {
+			return nil, err
+		}
+
+		m[version] = versionBundle
 	}
+
 	return m, nil
 }
 
-func getVersionBundles(version eksav1alpha1.KubernetesVersion, b *v1alpha1.Bundles, eksdReleases map[eksav1alpha1.KubernetesVersion]*eksdv1alpha1.Release) (*VersionsBundle, error) {
+func getVersionBundles(version eksav1alpha1.KubernetesVersion, b *v1alpha1.Bundles, eksdRelease *eksdv1alpha1.Release) (*VersionsBundle, error) {
 	v, err := GetVersionsBundle(version, b)
 	if err != nil {
 		return nil, err
-	}
-
-	eksdRelease, ok := eksdReleases[version]
-	if !ok {
-		return nil, fmt.Errorf("can't get eksd release for kube version: %v", version)
 	}
 
 	kd, err := buildKubeDistro(eksdRelease)
@@ -180,32 +177,27 @@ func getVersionBundles(version eksav1alpha1.KubernetesVersion, b *v1alpha1.Bundl
 	return vb, nil
 }
 
-// GetVersionBundles returns a VersionsBundle if it exists in the VersionsBundles map.
-func (s *Spec) GetVersionBundles(version eksav1alpha1.KubernetesVersion) (*VersionsBundle, error) {
+// VersionBundles returns a VersionsBundle if it exists in the VersionsBundles map.
+func (s *Spec) VersionBundles(version eksav1alpha1.KubernetesVersion) *VersionsBundle {
 	vb, ok := s.VersionsBundles[version]
 	if !ok {
-		return nil, fmt.Errorf("VersionsBundle for version %v not found", version)
+		return nil
 	}
 
-	return vb, nil
+	return vb
 }
 
-// GetCPVersionsBundle returns a VersionsBundle for the top level kubernetes version.
-func (s *Spec) GetCPVersionsBundle() (*VersionsBundle, error) {
-	return s.GetVersionBundles(s.Cluster.Spec.KubernetesVersion)
+// ControlPlaneVersionsBundle returns a VersionsBundle for the top level kubernetes version.
+func (s *Spec) ControlPlaneVersionsBundle() *VersionsBundle {
+	return s.VersionBundles(s.Cluster.Spec.KubernetesVersion)
 }
 
-// GetOldAndNewCPVersionBundle returns the top level kubernetes version's VersionsBundle for the old and new specs.
-func GetOldAndNewCPVersionBundle(old, new *Spec) (*VersionsBundle, *VersionsBundle, error) {
-	ovb, err := old.GetCPVersionsBundle()
-	if err != nil {
-		return nil, nil, err
+// WorkerNodeGroupVersionsBundle returns a VersionsBundle for the Worker Node's kubernetes version.
+func (s *Spec) WorkerNodeGroupVersionsBundle(w eksav1alpha1.WorkerNodeGroupConfiguration) *VersionsBundle {
+	if w.KubernetesVersion != nil {
+		return s.VersionBundles(*w.KubernetesVersion)
 	}
-	nvb, err := new.GetCPVersionsBundle()
-	if err != nil {
-		return nil, nil, err
-	}
-	return ovb, nvb, nil
+	return s.ControlPlaneVersionsBundle()
 }
 
 func buildKubeDistro(eksd *eksdv1alpha1.Release) (*KubeDistro, error) {

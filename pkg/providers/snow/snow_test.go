@@ -875,15 +875,15 @@ func TestVersion(t *testing.T) {
 
 func TestGetInfrastructureBundle(t *testing.T) {
 	tt := newSnowTest(t)
-	vb, err := tt.clusterSpec.GetCPVersionsBundle()
-	if err != nil {
-		t.Errorf("Can't get VersionsBundle")
+	bundle := tt.clusterSpec.ControlPlaneVersionsBundle()
+	if bundle == nil {
+		t.Errorf("can't get VersionsBundle")
 	}
 	want := &types.InfrastructureBundle{
 		FolderName: "infrastructure-snow/v1.0.2/",
 		Manifests: []releasev1alpha1.Manifest{
-			vb.Snow.Components,
-			vb.Snow.Metadata,
+			bundle.Snow.Components,
+			bundle.Snow.Metadata,
 		},
 	}
 	got := tt.provider.GetInfrastructureBundle(tt.clusterSpec)

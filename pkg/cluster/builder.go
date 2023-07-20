@@ -92,26 +92,23 @@ func (b FileSpecBuilder) Build(clusterConfigURL string) (*Spec, error) {
 	return NewSpec(config, bundlesManifest, eksdReleases)
 }
 
-func getAllEksdReleases(cluster *v1alpha1.Cluster, bundlesManifest *releasev1.Bundles, reader bundles.Reader) (map[v1alpha1.KubernetesVersion]*eksdv1.Release, error) {
-	m := make(map[v1alpha1.KubernetesVersion]*eksdv1.Release)
+func getAllEksdReleases(cluster *v1alpha1.Cluster, bundlesManifest *releasev1.Bundles, reader bundles.Reader) ([]eksdv1.Release, error) {
+	m := make([]eksdv1.Release, 0)
 	version := cluster.Spec.KubernetesVersion
 	eksd, err := getEksdReleases(version, bundlesManifest, reader)
-	if err != nil {
+	if err != nil && eksd == nil {
 		return nil, err
 	}
-	m[version] = eksd
+	m = append(m, *eksd)
 
 	for _, wng := range cluster.Spec.WorkerNodeGroupConfigurations {
 		if wng.KubernetesVersion != nil {
 			version = *wng.KubernetesVersion
-			if _, ok := m[version]; ok {
-				continue
-			}
 			eksd, err = getEksdReleases(version, bundlesManifest, reader)
-			if err != nil {
+			if err != nil && eksd == nil {
 				return nil, err
 			}
-			m[version] = eksd
+			m = append(m, *eksd)
 		}
 	}
 	return m, nil

@@ -100,10 +100,11 @@ func (cs *TemplateBuilder) GenerateCAPISpecWorkers(clusterSpec *cluster.Spec, wo
 // nolint:gocyclo
 func buildTemplateMapCP(clusterSpec *cluster.Spec) (map[string]interface{}, error) {
 	datacenterConfigSpec := clusterSpec.CloudStackDatacenter.Spec
-	bundle, err := clusterSpec.GetCPVersionsBundle()
-	if err != nil {
-		return nil, err
+	bundle := clusterSpec.ControlPlaneVersionsBundle()
+	if bundle == nil {
+		return nil, fmt.Errorf("could not find VersionsBundle")
 	}
+
 	format := "cloud-config"
 	host, port, err := getValidControlPlaneHostPort(clusterSpec.Cluster.Spec.ControlPlaneConfiguration.Endpoint.Host)
 	if err != nil {
@@ -314,12 +315,9 @@ func fillProxyConfigurations(values map[string]interface{}, clusterSpec *cluster
 }
 
 func buildTemplateMapMD(clusterSpec *cluster.Spec, workerNodeGroupConfiguration v1alpha1.WorkerNodeGroupConfiguration) (map[string]interface{}, error) {
-	bundle, err := clusterSpec.GetCPVersionsBundle()
-	if workerNodeGroupConfiguration.KubernetesVersion != nil {
-		bundle, err = clusterSpec.GetVersionBundles(*workerNodeGroupConfiguration.KubernetesVersion)
-	}
-	if err != nil {
-		return nil, err
+	bundle := clusterSpec.WorkerNodeGroupVersionsBundle(workerNodeGroupConfiguration)
+	if bundle == nil {
+		return nil, fmt.Errorf("could not find VersionsBundle")
 	}
 	format := "cloud-config"
 	kubeletExtraArgs := clusterapi.SecureTlsCipherSuitesExtraArgs().

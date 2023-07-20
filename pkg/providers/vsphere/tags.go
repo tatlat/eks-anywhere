@@ -19,13 +19,10 @@ func requiredTemplateTags(clusterSpec *cluster.Spec, machineConfig *v1alpha1.VSp
 }
 
 func requiredTemplateTagsByCategory(clusterSpec *cluster.Spec, machineConfig *v1alpha1.VSphereMachineConfig) map[string][]string {
+	bundle := getVersionsBundleForMachineConfig(clusterSpec, machineConfig)
 	osFamily := machineConfig.Spec.OSFamily
-	vb, err := clusterSpec.GetCPVersionsBundle()
-	if err != nil {
-		return nil
-	}
 	return map[string][]string{
-		"eksdRelease": {fmt.Sprintf("eksdRelease:%s", vb.EksD.Name)},
+		"eksdRelease": {fmt.Sprintf("eksdRelease:%s", bundle.EksD.Name)},
 		"os":          {fmt.Sprintf("os:%s", strings.ToLower(string(osFamily)))},
 	}
 }

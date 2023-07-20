@@ -173,7 +173,7 @@ func TestReconcileCAPIClusterNotFound(t *testing.T) {
 	remoteClientRegistry := reconcilermocks.NewMockRemoteClientRegistry(ctrl)
 
 	bundle := test.Bundle()
-	eksdRelease := test.EksdRelease()
+	eksdRelease := test.EksdRelease("1-22")
 	objs := []runtime.Object{bundle, eksdRelease}
 	cb := fake.NewClientBuilder()
 	scheme := runtime.NewScheme()
@@ -212,7 +212,7 @@ func TestReconcileRemoteGetClientError(t *testing.T) {
 	remoteClientRegistry := reconcilermocks.NewMockRemoteClientRegistry(ctrl)
 
 	bundle := test.Bundle()
-	eksdRelease := test.EksdRelease()
+	eksdRelease := test.EksdRelease("1-22")
 	cluster := &anywherev1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "my-cluster",
@@ -262,7 +262,7 @@ func TestReconcileConfigMapNotFoundApplyError(t *testing.T) {
 	remoteClientRegistry := reconcilermocks.NewMockRemoteClientRegistry(ctrl)
 
 	bundle := test.Bundle()
-	eksdRelease := test.EksdRelease()
+	eksdRelease := test.EksdRelease("1-22")
 	cluster := &anywherev1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "my-cluster",
