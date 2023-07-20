@@ -20,7 +20,6 @@ import (
 
 	"github.com/aws/eks-anywhere/internal/test"
 	"github.com/aws/eks-anywhere/internal/test/envtest"
-	m "github.com/aws/eks-anywhere/internal/test/mocks"
 	anywherev1 "github.com/aws/eks-anywhere/pkg/api/v1alpha1"
 	clusterspec "github.com/aws/eks-anywhere/pkg/cluster"
 	"github.com/aws/eks-anywhere/pkg/constants"
@@ -425,7 +424,6 @@ type reconcilerTest struct {
 	env                  *envtest.Environment
 	eksaSupportObjs      []client.Object
 	datacenterConfig     *anywherev1.DockerDatacenterConfig
-	reader               *m.MockReader
 }
 
 func newReconcilerTest(t testing.TB) *reconcilerTest {
@@ -433,7 +431,6 @@ func newReconcilerTest(t testing.TB) *reconcilerTest {
 	cniReconciler := dockereconcilermocks.NewMockCNIReconciler(ctrl)
 	remoteClientRegistry := dockereconcilermocks.NewMockRemoteClientRegistry(ctrl)
 	c := env.Client()
-	reader := m.NewMockReader(ctrl)
 
 	bundle := test.Bundle()
 
@@ -492,10 +489,9 @@ func newReconcilerTest(t testing.TB) *reconcilerTest {
 			managementCluster,
 			workloadClusterDatacenter,
 			bundle,
-			test.EksdRelease(),
+			test.EksdRelease("1-22"),
 		},
 		datacenterConfig: workloadClusterDatacenter,
-		reader:           reader,
 	}
 
 	t.Cleanup(tt.cleanup)

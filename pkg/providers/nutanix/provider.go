@@ -548,7 +548,7 @@ func (p *Provider) GenerateStorageClass() []byte {
 	return nil
 }
 
-// GenerateMHC generates MHC.
+// GenerateMHC returns MachineHealthCheck for the cluster in yaml format.
 func (p *Provider) GenerateMHC(_ *cluster.Spec) ([]byte, error) {
 	data := map[string]string{
 		"clusterName":         p.clusterConfig.Name,
@@ -569,11 +569,8 @@ func (p *Provider) UpdateKubeConfig(content *[]byte, clusterName string) error {
 
 // Version returns the nutanix version from the VersionsBundle.
 func (p *Provider) Version(clusterSpec *cluster.Spec) string {
-	vb, err := clusterSpec.GetCPVersionsBundle()
-	if err != nil {
-		return ""
-	}
-	return vb.Nutanix.Version
+	versionsBundle := clusterSpec.ControlPlaneVersionsBundle()
+	return versionsBundle.Nutanix.Version
 }
 
 func (p *Provider) EnvMap(_ *cluster.Spec) (map[string]string, error) {
@@ -596,14 +593,11 @@ func (p *Provider) GetDeployments() map[string][]string {
 }
 
 func (p *Provider) GetInfrastructureBundle(clusterSpec *cluster.Spec) *types.InfrastructureBundle {
-	bundle, err := clusterSpec.GetCPVersionsBundle()
-	if err != nil {
-		return nil
-	}
+	versionsBundle := clusterSpec.ControlPlaneVersionsBundle()
 	manifests := []releasev1alpha1.Manifest{
-		bundle.Nutanix.Components,
-		bundle.Nutanix.Metadata,
-		bundle.Nutanix.ClusterTemplate,
+		versionsBundle.Nutanix.Components,
+		versionsBundle.Nutanix.Metadata,
+		versionsBundle.Nutanix.ClusterTemplate,
 	}
 	folderName := fmt.Sprintf("infrastructure-nutanix/%s/", p.Version(clusterSpec))
 	infraBundle := types.InfrastructureBundle{
@@ -665,18 +659,16 @@ func (p *Provider) ValidateNewSpec(_ context.Context, _ *types.Cluster, _ *clust
 }
 
 func (p *Provider) ChangeDiff(currentSpec, newSpec *cluster.Spec) *types.ComponentChangeDiff {
-	cvb, nvb, err := cluster.GetOldAndNewCPVersionBundle(currentSpec, newSpec)
-	if err != nil {
-		return nil
-	}
-	if cvb.Nutanix.Version == nvb.Nutanix.Version {
+	currentVersionsBundle := currentSpec.ControlPlaneVersionsBundle()
+	newVersionsBundle := newSpec.ControlPlaneVersionsBundle()
+	if currentVersionsBundle.Nutanix.Version == newVersionsBundle.Nutanix.Version {
 		return nil
 	}
 
 	return &types.ComponentChangeDiff{
 		ComponentName: constants.NutanixProviderName,
-		NewVersion:    nvb.Nutanix.Version,
-		OldVersion:    cvb.Nutanix.Version,
+		NewVersion:    newVersionsBundle.Nutanix.Version,
+		OldVersion:    currentVersionsBundle.Nutanix.Version,
 	}
 }
 

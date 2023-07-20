@@ -41,12 +41,9 @@ func KubeadmControlPlane(log logr.Logger, clusterSpec *cluster.Spec, snowMachine
 		return nil, fmt.Errorf("generating KubeadmControlPlane: %v", err)
 	}
 
-	vb, err := clusterSpec.GetCPVersionsBundle()
-	if err != nil {
-		return nil, err
-	}
+	versionsBundle := clusterSpec.ControlPlaneVersionsBundle()
 
-	if err := clusterapi.SetKubeVipInKubeadmControlPlane(kcp, clusterSpec.Cluster.Spec.ControlPlaneConfiguration.Endpoint.Host, vb.Snow.KubeVip.VersionedImage()); err != nil {
+	if err := clusterapi.SetKubeVipInKubeadmControlPlane(kcp, clusterSpec.Cluster.Spec.ControlPlaneConfiguration.Endpoint.Host, versionsBundle.Snow.KubeVip.VersionedImage()); err != nil {
 		return nil, fmt.Errorf("setting kube-vip: %v", err)
 	}
 
@@ -65,11 +62,11 @@ func KubeadmControlPlane(log logr.Logger, clusterSpec *cluster.Spec, snowMachine
 	case v1alpha1.Bottlerocket:
 		clusterapi.SetProxyConfigInKubeadmControlPlaneForBottlerocket(kcp, clusterSpec.Cluster)
 		clusterapi.SetRegistryMirrorInKubeadmControlPlaneForBottlerocket(kcp, clusterSpec.Cluster.Spec.RegistryMirrorConfiguration)
-		clusterapi.SetBottlerocketInKubeadmControlPlane(kcp, vb)
-		clusterapi.SetBottlerocketAdminContainerImageInKubeadmControlPlane(kcp, vb)
-		clusterapi.SetBottlerocketControlContainerImageInKubeadmControlPlane(kcp, vb)
+		clusterapi.SetBottlerocketInKubeadmControlPlane(kcp, versionsBundle)
+		clusterapi.SetBottlerocketAdminContainerImageInKubeadmControlPlane(kcp, versionsBundle)
+		clusterapi.SetBottlerocketControlContainerImageInKubeadmControlPlane(kcp, versionsBundle)
 		clusterapi.SetUnstackedEtcdConfigInKubeadmControlPlaneForBottlerocket(kcp, clusterSpec.Cluster.Spec.ExternalEtcdConfiguration)
-		addBottlerocketBootstrapSnowInKubeadmControlPlane(kcp, vb.Snow.BottlerocketBootstrapSnow)
+		addBottlerocketBootstrapSnowInKubeadmControlPlane(kcp, versionsBundle.Snow.BottlerocketBootstrapSnow)
 		clusterapi.SetBottlerocketHostConfigInKubeadmControlPlane(kcp, machineConfig.Spec.HostOSConfiguration)
 
 	case v1alpha1.Ubuntu:
@@ -105,10 +102,7 @@ func KubeadmConfigTemplate(log logr.Logger, clusterSpec *cluster.Spec, workerNod
 		return nil, fmt.Errorf("generating KubeadmConfigTemplate: %v", err)
 	}
 
-	vb, err := clusterSpec.GetCPVersionsBundle()
-	if err != nil {
-		return nil, err
-	}
+	versionsBundle := clusterSpec.ControlPlaneVersionsBundle()
 
 	joinConfigKubeletExtraArg := kct.Spec.Template.Spec.JoinConfiguration.NodeRegistration.KubeletExtraArgs
 	joinConfigKubeletExtraArg["provider-id"] = "aws-snow:////'{{ ds.meta_data.instance_id }}'"
@@ -119,10 +113,10 @@ func KubeadmConfigTemplate(log logr.Logger, clusterSpec *cluster.Spec, workerNod
 	case v1alpha1.Bottlerocket:
 		clusterapi.SetProxyConfigInKubeadmConfigTemplateForBottlerocket(kct, clusterSpec.Cluster)
 		clusterapi.SetRegistryMirrorInKubeadmConfigTemplateForBottlerocket(kct, clusterSpec.Cluster.Spec.RegistryMirrorConfiguration)
-		clusterapi.SetBottlerocketInKubeadmConfigTemplate(kct, vb)
-		clusterapi.SetBottlerocketAdminContainerImageInKubeadmConfigTemplate(kct, vb)
-		clusterapi.SetBottlerocketControlContainerImageInKubeadmConfigTemplate(kct, vb)
-		addBottlerocketBootstrapSnowInKubeadmConfigTemplate(kct, vb.Snow.BottlerocketBootstrapSnow)
+		clusterapi.SetBottlerocketInKubeadmConfigTemplate(kct, versionsBundle)
+		clusterapi.SetBottlerocketAdminContainerImageInKubeadmConfigTemplate(kct, versionsBundle)
+		clusterapi.SetBottlerocketControlContainerImageInKubeadmConfigTemplate(kct, versionsBundle)
+		addBottlerocketBootstrapSnowInKubeadmConfigTemplate(kct, versionsBundle.Snow.BottlerocketBootstrapSnow)
 		clusterapi.SetBottlerocketHostConfigInKubeadmConfigTemplate(kct, machineConfig.Spec.HostOSConfiguration)
 
 	case v1alpha1.Ubuntu:
@@ -146,35 +140,28 @@ func KubeadmConfigTemplate(log logr.Logger, clusterSpec *cluster.Spec, workerNod
 	return kct, nil
 }
 
-func machineDeployment(clusterSpec *cluster.Spec, workerNodeGroupConfig v1alpha1.WorkerNodeGroupConfiguration, kubeadmConfigTemplate *bootstrapv1.KubeadmConfigTemplate, snowMachineTemplate *snowv1.AWSSnowMachineTemplate) (*clusterv1.MachineDeployment, error) {
-	md, err := clusterapi.MachineDeployment(clusterSpec, workerNodeGroupConfig, kubeadmConfigTemplate, snowMachineTemplate)
-	if err != nil {
-		return nil, err
-	}
-	return md, nil
+func machineDeployment(clusterSpec *cluster.Spec, workerNodeGroupConfig v1alpha1.WorkerNodeGroupConfiguration, kubeadmConfigTemplate *bootstrapv1.KubeadmConfigTemplate, snowMachineTemplate *snowv1.AWSSnowMachineTemplate) *clusterv1.MachineDeployment {
+	return clusterapi.MachineDeployment(clusterSpec, workerNodeGroupConfig, kubeadmConfigTemplate, snowMachineTemplate)
 }
 
 // EtcdadmCluster builds an etcdadmCluster based on an eks-a cluster spec and snowMachineTemplate.
 func EtcdadmCluster(log logr.Logger, clusterSpec *cluster.Spec, snowMachineTemplate *snowv1.AWSSnowMachineTemplate) *etcdv1.EtcdadmCluster {
 	etcd := clusterapi.EtcdadmCluster(clusterSpec, snowMachineTemplate)
 
-	vb, err := clusterSpec.GetCPVersionsBundle()
-	if err != nil {
-		return nil
-	}
+	versionsBundle := clusterSpec.ControlPlaneVersionsBundle()
 
 	machineConfig := clusterSpec.SnowMachineConfig(clusterSpec.Cluster.Spec.ExternalEtcdConfiguration.MachineGroupRef.Name)
 	osFamily := machineConfig.OSFamily()
 	switch osFamily {
 	case v1alpha1.Bottlerocket:
-		clusterapi.SetBottlerocketInEtcdCluster(etcd, vb)
-		clusterapi.SetBottlerocketAdminContainerImageInEtcdCluster(etcd, vb.BottleRocketHostContainers.Admin)
-		clusterapi.SetBottlerocketControlContainerImageInEtcdCluster(etcd, vb.BottleRocketHostContainers.Control)
-		addBottlerocketBootstrapSnowInEtcdCluster(etcd, vb.Snow.BottlerocketBootstrapSnow)
+		clusterapi.SetBottlerocketInEtcdCluster(etcd, versionsBundle)
+		clusterapi.SetBottlerocketAdminContainerImageInEtcdCluster(etcd, versionsBundle.BottleRocketHostContainers.Admin)
+		clusterapi.SetBottlerocketControlContainerImageInEtcdCluster(etcd, versionsBundle.BottleRocketHostContainers.Control)
+		addBottlerocketBootstrapSnowInEtcdCluster(etcd, versionsBundle.Snow.BottlerocketBootstrapSnow)
 		clusterapi.SetBottlerocketHostConfigInEtcdCluster(etcd, machineConfig.Spec.HostOSConfiguration)
 
 	case v1alpha1.Ubuntu:
-		clusterapi.SetUbuntuConfigInEtcdCluster(etcd, vb.KubeDistro.EtcdVersion)
+		clusterapi.SetUbuntuConfigInEtcdCluster(etcd, versionsBundle.KubeDistro.EtcdVersion)
 		etcd.Spec.EtcdadmConfigSpec.PreEtcdadmCommands = append(etcd.Spec.EtcdadmConfigSpec.PreEtcdadmCommands,
 			"/etc/eks/bootstrap.sh",
 		)

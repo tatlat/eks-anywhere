@@ -479,19 +479,8 @@ func wantMachineDeployment() *clusterv1.MachineDeployment {
 
 func TestMachineDeployment(t *testing.T) {
 	tt := newApiBuilerTest(t)
-	got, err := clusterapi.MachineDeployment(tt.clusterSpec, *tt.workerNodeGroupConfig, tt.kubeadmConfigTemplate, tt.providerMachineTemplate)
-
-	tt.Expect(err).To(BeNil())
+	got := clusterapi.MachineDeployment(tt.clusterSpec, *tt.workerNodeGroupConfig, tt.kubeadmConfigTemplate, tt.providerMachineTemplate)
 	tt.Expect(got).To(BeComparableTo(wantMachineDeployment()))
-}
-
-func TestMachineDeploymenError(t *testing.T) {
-	tt := newApiBuilerTest(t)
-	kubeVer := anywherev1.KubernetesVersion("1.18")
-	tt.workerNodeGroupConfig.KubernetesVersion = &kubeVer
-	_, err := clusterapi.MachineDeployment(tt.clusterSpec, *tt.workerNodeGroupConfig, tt.kubeadmConfigTemplate, tt.providerMachineTemplate)
-
-	tt.Expect(err).ToNot(BeNil())
 }
 
 func TestClusterName(t *testing.T) {

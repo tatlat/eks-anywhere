@@ -100,6 +100,7 @@ func (tt *buildSpecTest) expectGetEksd() {
 		func(ctx context.Context, name, namespace string, obj runtime.Object) error {
 			o := obj.(*eksdv1.Release)
 			o.ObjectMeta = tt.eksdRelease.ObjectMeta
+			o.Spec = tt.eksdRelease.Spec
 			o.Status = tt.eksdRelease.Status
 			return nil
 		},
@@ -108,6 +109,9 @@ func (tt *buildSpecTest) expectGetEksd() {
 		func(ctx context.Context, name, namespace string, obj runtime.Object) error {
 			o := obj.(*eksdv1.Release)
 			o.ObjectMeta = tt.eksdRelease.ObjectMeta
+			o.Spec = eksdv1.ReleaseSpec{
+				Channel: "1-22",
+			}
 			o.Status = tt.eksdRelease.Status
 			return nil
 		},
@@ -118,6 +122,9 @@ func TestBuildSpec(t *testing.T) {
 	tt := newBuildSpecTest(t)
 	tt.expectGetBundles()
 	tt.expectGetEksd()
+
+	_, kubeDistro := wantKubeDistroForEksdRelease()
+	kubeDistro.EKSD.Channel = "1-22"
 
 	wantSpec := &cluster.Spec{
 		Config: &cluster.Config{
@@ -133,7 +140,7 @@ func TestBuildSpec(t *testing.T) {
 			},
 			anywherev1.Kube122: {
 				VersionsBundle: &tt.bundles.Spec.VersionsBundles[1],
-				KubeDistro:     tt.kubeDistro,
+				KubeDistro:     kubeDistro,
 			},
 		},
 	}
@@ -209,6 +216,9 @@ func wantKubeDistroForEksdRelease() (*eksdv1.Release, *cluster.KubeDistro) {
 	eksdRelease := &eksdv1.Release{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "eksd-123",
+		},
+		Spec: eksdv1.ReleaseSpec{
+			Channel: "1-23",
 		},
 		Status: eksdv1.ReleaseStatus{
 			Components: []eksdv1.Component{
@@ -286,6 +296,9 @@ func wantKubeDistroForEksdRelease() (*eksdv1.Release, *cluster.KubeDistro) {
 	}
 
 	kubeDistro := &cluster.KubeDistro{
+		EKSD: cluster.EKSD{
+			Channel: "1-23",
+		},
 		Kubernetes: cluster.VersionedRepository{
 			Repository: "public.ecr.aws/eks-distro/kubernetes",
 			Tag:        "v1.19.8",

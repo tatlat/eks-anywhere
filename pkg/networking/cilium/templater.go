@@ -40,14 +40,11 @@ func NewTemplater(helm Helm) *Templater {
 }
 
 func (t *Templater) GenerateUpgradePreflightManifest(ctx context.Context, spec *cluster.Spec) ([]byte, error) {
-	vb, err := spec.GetCPVersionsBundle()
-	if err != nil {
-		return nil, err
-	}
-	v := templateValues(spec)
+	versionsBundle := spec.ControlPlaneVersionsBundle()
+	v := templateValues(spec, versionsBundle)
 	v.set(true, "preflight", "enabled")
-	v.set(vb.Cilium.Cilium.Image(), "preflight", "image", "repository")
-	v.set(vb.Cilium.Cilium.Tag(), "preflight", "image", "tag")
+	v.set(versionsBundle.Cilium.Cilium.Image(), "preflight", "image", "repository")
+	v.set(versionsBundle.Cilium.Cilium.Tag(), "preflight", "image", "tag")
 	v.set(false, "agent")
 	v.set(false, "operator", "enabled")
 
@@ -76,9 +73,9 @@ func (t *Templater) GenerateUpgradePreflightManifest(ctx context.Context, spec *
 	}
 	v.set(tolerationsList, "preflight", "tolerations")
 
-	uri, version := getChartUriAndVersion(spec)
+	uri, version := getChartUriAndVersion(versionsBundle)
 
-	kubeVersion, err := getKubeVersionString(spec)
+	kubeVersion, err := getKubeVersionString(spec, versionsBundle)
 	if err != nil {
 		return nil, err
 	}
@@ -134,13 +131,14 @@ func WithPolicyAllowedNamespaces(namespaces []string) ManifestOpt {
 }
 
 func (t *Templater) GenerateManifest(ctx context.Context, spec *cluster.Spec, opts ...ManifestOpt) ([]byte, error) {
-	kubeVersion, err := getKubeVersionString(spec)
+	versionsBundle := spec.ControlPlaneVersionsBundle()
+	kubeVersion, err := getKubeVersionString(spec, versionsBundle)
 	if err != nil {
 		return nil, err
 	}
 
 	c := &ManifestConfig{
-		values:      templateValues(spec),
+		values:      templateValues(spec, versionsBundle),
 		kubeVersion: kubeVersion,
 		retrier:     retrier.NewWithMaxRetries(maxRetries, defaultBackOffPeriod),
 	}
@@ -148,7 +146,7 @@ func (t *Templater) GenerateManifest(ctx context.Context, spec *cluster.Spec, op
 		o(c)
 	}
 
-	uri, version := getChartUriAndVersion(spec)
+	uri, version := getChartUriAndVersion(versionsBundle)
 	var manifest []byte
 
 	if spec.Cluster.Spec.RegistryMirrorConfiguration != nil {
@@ -214,11 +212,7 @@ func (c values) set(value interface{}, path ...string) {
 	element[path[len(path)-1]] = value
 }
 
-func templateValues(spec *cluster.Spec) values {
-	vb, err := spec.GetCPVersionsBundle()
-	if err != nil {
-		return nil
-	}
+func templateValues(spec *cluster.Spec, versionsBundle *cluster.VersionsBundle) values {
 	val := values{
 		"cni": values{
 			"chainingMode": "portmap",
@@ -233,15 +227,15 @@ func templateValues(spec *cluster.Spec) values {
 		"rollOutCiliumPods": true,
 		"tunnel":            "geneve",
 		"image": values{
-			"repository": vb.Cilium.Cilium.Image(),
-			"tag":        vb.Cilium.Cilium.Tag(),
+			"repository": versionsBundle.Cilium.Cilium.Image(),
+			"tag":        versionsBundle.Cilium.Cilium.Tag(),
 		},
 		"operator": values{
 			"image": values{
 				// The chart expects an "incomplete" repository
 				// and will add the necessary suffix ("-generic" in our case)
-				"repository": strings.TrimSuffix(vb.Cilium.Operator.Image(), "-generic"),
-				"tag":        vb.Cilium.Operator.Tag(),
+				"repository": strings.TrimSuffix(versionsBundle.Cilium.Operator.Image(), "-generic"),
+				"tag":        versionsBundle.Cilium.Operator.Tag(),
 			},
 			"prometheus": values{
 				"enabled": true,
@@ -264,32 +258,23 @@ func templateValues(spec *cluster.Spec) values {
 	return val
 }
 
-func getChartUriAndVersion(spec *cluster.Spec) (uri, version string) {
-	vb, err := spec.GetCPVersionsBundle()
-	if err != nil {
-		return "", ""
-	}
-
-	chart := vb.Cilium.HelmChart
+func getChartUriAndVersion(versionsBundle *cluster.VersionsBundle) (uri, version string) {
+	chart := versionsBundle.Cilium.HelmChart
 	uri = fmt.Sprintf("oci://%s", chart.Image())
 	version = chart.Tag()
 	return uri, version
 }
 
-func getKubeVersion(spec *cluster.Spec) (*semver.Version, error) {
-	vb, err := spec.GetCPVersionsBundle()
-	if err != nil {
-		return nil, err
-	}
-	k8sVersion, err := semver.New(vb.KubeDistro.Kubernetes.Tag)
+func getKubeVersion(spec *cluster.Spec, versionsBundle *cluster.VersionsBundle) (*semver.Version, error) {
+	k8sVersion, err := semver.New(versionsBundle.KubeDistro.Kubernetes.Tag)
 	if err != nil {
 		return nil, fmt.Errorf("parsing kubernetes version %v: %v", spec.Cluster.Spec.KubernetesVersion, err)
 	}
 	return k8sVersion, nil
 }
 
-func getKubeVersionString(spec *cluster.Spec) (string, error) {
-	k8sVersion, err := getKubeVersion(spec)
+func getKubeVersionString(spec *cluster.Spec, versionsBundle *cluster.VersionsBundle) (string, error) {
+	k8sVersion, err := getKubeVersion(spec, versionsBundle)
 	if err != nil {
 		return "", err
 	}

@@ -202,18 +202,16 @@ func (p *cloudstackProvider) ValidateNewSpec(ctx context.Context, cluster *types
 }
 
 func (p *cloudstackProvider) ChangeDiff(currentSpec, newSpec *cluster.Spec) *types.ComponentChangeDiff {
-	cvb, nvb, err := cluster.GetOldAndNewCPVersionBundle(currentSpec, newSpec)
-	if err != nil {
-		return nil
-	}
-	if cvb.CloudStack.Version == nvb.CloudStack.Version {
+	currentVersionsBundle := currentSpec.ControlPlaneVersionsBundle()
+	newVersionsBundle := newSpec.ControlPlaneVersionsBundle()
+	if currentVersionsBundle.CloudStack.Version == newVersionsBundle.CloudStack.Version {
 		return nil
 	}
 
 	return &types.ComponentChangeDiff{
 		ComponentName: constants.CloudStackProviderName,
-		NewVersion:    nvb.CloudStack.Version,
-		OldVersion:    cvb.CloudStack.Version,
+		NewVersion:    newVersionsBundle.CloudStack.Version,
+		OldVersion:    currentVersionsBundle.CloudStack.Version,
 	}
 }
 
@@ -820,11 +818,8 @@ func (p *cloudstackProvider) BootstrapSetup(ctx context.Context, clusterConfig *
 }
 
 func (p *cloudstackProvider) Version(clusterSpec *cluster.Spec) string {
-	vb, err := clusterSpec.GetCPVersionsBundle()
-	if err != nil {
-		return ""
-	}
-	return vb.CloudStack.Version
+	versionsBundle := clusterSpec.ControlPlaneVersionsBundle()
+	return versionsBundle.CloudStack.Version
 }
 
 func (p *cloudstackProvider) EnvMap(_ *cluster.Spec) (map[string]string, error) {
@@ -844,17 +839,14 @@ func (p *cloudstackProvider) GetDeployments() map[string][]string {
 }
 
 func (p *cloudstackProvider) GetInfrastructureBundle(clusterSpec *cluster.Spec) *types.InfrastructureBundle {
-	bundle, err := clusterSpec.GetCPVersionsBundle()
-	if err != nil {
-		return nil
-	}
-	folderName := fmt.Sprintf("infrastructure-cloudstack/%s/", bundle.CloudStack.Version)
+	versionsBundle := clusterSpec.ControlPlaneVersionsBundle()
+	folderName := fmt.Sprintf("infrastructure-cloudstack/%s/", versionsBundle.CloudStack.Version)
 
 	infraBundle := types.InfrastructureBundle{
 		FolderName: folderName,
 		Manifests: []releasev1alpha1.Manifest{
-			bundle.CloudStack.Components,
-			bundle.CloudStack.Metadata,
+			versionsBundle.CloudStack.Components,
+			versionsBundle.CloudStack.Metadata,
 		},
 	}
 	return &infraBundle

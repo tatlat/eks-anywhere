@@ -208,11 +208,8 @@ func (p *Provider) UpdateKubeConfig(content *[]byte, clusterName string) error {
 }
 
 func (p *Provider) Version(clusterSpec *cluster.Spec) string {
-	vb, err := clusterSpec.GetCPVersionsBundle()
-	if err != nil {
-		return ""
-	}
-	return vb.Tinkerbell.Version
+	versionsBundle := clusterSpec.ControlPlaneVersionsBundle()
+	return versionsBundle.Tinkerbell.Version
 }
 
 func (p *Provider) EnvMap(spec *cluster.Spec) (map[string]string, error) {
@@ -246,18 +243,15 @@ func (p *Provider) GetDeployments() map[string][]string {
 }
 
 func (p *Provider) GetInfrastructureBundle(clusterSpec *cluster.Spec) *types.InfrastructureBundle {
-	bundle, err := clusterSpec.GetCPVersionsBundle()
-	if err != nil {
-		return nil
-	}
-	folderName := fmt.Sprintf("infrastructure-tinkerbell/%s/", bundle.Tinkerbell.Version)
+	versionsBundle := clusterSpec.ControlPlaneVersionsBundle()
+	folderName := fmt.Sprintf("infrastructure-tinkerbell/%s/", versionsBundle.Tinkerbell.Version)
 
 	infraBundle := types.InfrastructureBundle{
 		FolderName: folderName,
 		Manifests: []releasev1alpha1.Manifest{
-			bundle.Tinkerbell.Components,
-			bundle.Tinkerbell.Metadata,
-			bundle.Tinkerbell.ClusterTemplate,
+			versionsBundle.Tinkerbell.Components,
+			versionsBundle.Tinkerbell.Metadata,
+			versionsBundle.Tinkerbell.ClusterTemplate,
 		},
 	}
 	return &infraBundle
@@ -301,18 +295,16 @@ func (p *Provider) MachineConfigs(_ *cluster.Spec) []providers.MachineConfig {
 }
 
 func (p *Provider) ChangeDiff(currentSpec, newSpec *cluster.Spec) *types.ComponentChangeDiff {
-	cvb, nvb, err := cluster.GetOldAndNewCPVersionBundle(currentSpec, newSpec)
-	if err != nil {
-		return nil
-	}
-	if cvb.Tinkerbell.Version == nvb.Tinkerbell.Version {
+	currentVersionsBundle := currentSpec.ControlPlaneVersionsBundle()
+	newVersionsBundle := newSpec.ControlPlaneVersionsBundle()
+	if currentVersionsBundle.Tinkerbell.Version == newVersionsBundle.Tinkerbell.Version {
 		return nil
 	}
 
 	return &types.ComponentChangeDiff{
 		ComponentName: constants.TinkerbellProviderName,
-		NewVersion:    nvb.Tinkerbell.Version,
-		OldVersion:    cvb.Tinkerbell.Version,
+		NewVersion:    newVersionsBundle.Tinkerbell.Version,
+		OldVersion:    currentVersionsBundle.Tinkerbell.Version,
 	}
 }
 

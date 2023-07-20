@@ -382,14 +382,11 @@ func TestPreCAPIInstallOnBootstrapSuccess(t *testing.T) {
 	provider := newProvider(datacenterConfig, machineConfigs, clusterSpec.Cluster, writer, docker, helm, kubectl, forceCleanup)
 	provider.stackInstaller = stackInstaller
 
-	vb, err := clusterSpec.GetCPVersionsBundle()
-	if err != nil {
-		t.Errorf("Can't get VersionsBundle")
-	}
+	bundle := clusterSpec.ControlPlaneVersionsBundle()
 
 	stackInstaller.EXPECT().Install(
 		ctx,
-		vb.Tinkerbell,
+		bundle.Tinkerbell,
 		testIP,
 		"test.kubeconfig",
 		"",
@@ -397,7 +394,7 @@ func TestPreCAPIInstallOnBootstrapSuccess(t *testing.T) {
 		gomock.Any(),
 	)
 
-	err = provider.PreCAPIInstallOnBootstrap(ctx, cluster, clusterSpec)
+	err := provider.PreCAPIInstallOnBootstrap(ctx, cluster, clusterSpec)
 	if err != nil {
 		t.Fatalf("failed PreCAPIInstallOnBootstrap: %v", err)
 	}
@@ -422,14 +419,11 @@ func TestPostWorkloadInitSuccess(t *testing.T) {
 	provider := newProvider(datacenterConfig, machineConfigs, clusterSpec.Cluster, writer, docker, helm, kubectl, forceCleanup)
 	provider.stackInstaller = stackInstaller
 
-	vb, err := clusterSpec.GetCPVersionsBundle()
-	if err != nil {
-		t.Error("Can't get VersionsBundle")
-	}
+	bundle := clusterSpec.ControlPlaneVersionsBundle()
 
 	stackInstaller.EXPECT().Install(
 		ctx,
-		vb.Tinkerbell,
+		bundle.Tinkerbell,
 		testIP,
 		"test.kubeconfig",
 		"",
@@ -440,7 +434,7 @@ func TestPostWorkloadInitSuccess(t *testing.T) {
 	)
 	stackInstaller.EXPECT().UninstallLocal(ctx)
 
-	err = provider.PostWorkloadInit(ctx, cluster, clusterSpec)
+	err := provider.PostWorkloadInit(ctx, cluster, clusterSpec)
 	if err != nil {
 		t.Fatalf("failed PostWorkloadInit: %v", err)
 	}

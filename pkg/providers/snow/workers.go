@@ -57,10 +57,7 @@ func WorkersSpec(ctx context.Context, log logr.Logger, spec *cluster.Spec, clien
 			return nil, err
 		}
 
-		machineDeployment, err := machineDeployment(spec, wc, kubeadmConfigTemplate, machineTemplate)
-		if err != nil {
-			return nil, err
-		}
+		machineDeployment := machineDeployment(spec, wc, kubeadmConfigTemplate, machineTemplate)
 
 		w.Groups = append(w.Groups, baseWorkerGroup{
 			MachineDeployment:       machineDeployment,

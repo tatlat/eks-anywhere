@@ -2779,14 +2779,11 @@ func TestGetInfrastructureBundleSuccess(t *testing.T) {
 			}
 			assert.Equal(t, "infrastructure-vsphere/v0.7.8/", infraBundle.FolderName, "Incorrect folder name")
 			assert.Equal(t, len(infraBundle.Manifests), 3, "Wrong number of files in the infrastructure bundle")
-			vb, err := tt.clusterSpec.GetCPVersionsBundle()
-			if err != nil {
-				t.Error("Can't get VersionsBundle")
-			}
+			bundle := tt.clusterSpec.ControlPlaneVersionsBundle()
 			wantManifests := []releasev1alpha1.Manifest{
-				vb.VSphere.Components,
-				vb.VSphere.Metadata,
-				vb.VSphere.ClusterTemplate,
+				bundle.VSphere.Components,
+				bundle.VSphere.Metadata,
+				bundle.VSphere.ClusterTemplate,
 			}
 			assert.ElementsMatch(t, infraBundle.Manifests, wantManifests, "Incorrect manifests")
 		})

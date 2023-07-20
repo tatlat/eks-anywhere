@@ -100,10 +100,11 @@ func (cs *TemplateBuilder) GenerateCAPISpecWorkers(clusterSpec *cluster.Spec, wo
 // nolint:gocyclo
 func buildTemplateMapCP(clusterSpec *cluster.Spec) (map[string]interface{}, error) {
 	datacenterConfigSpec := clusterSpec.CloudStackDatacenter.Spec
-	bundle, err := clusterSpec.GetCPVersionsBundle()
-	if err != nil {
-		return nil, err
+	versionsBundle := clusterSpec.ControlPlaneVersionsBundle()
+	if versionsBundle == nil {
+		return nil, fmt.Errorf("could not find VersionsBundle")
 	}
+
 	format := "cloud-config"
 	host, port, err := getValidControlPlaneHostPort(clusterSpec.Cluster.Spec.ControlPlaneConfiguration.Endpoint.Host)
 	if err != nil {
@@ -143,19 +144,19 @@ func buildTemplateMapCP(clusterSpec *cluster.Spec) (map[string]interface{}, erro
 		"controlPlaneEndpointHost":                   host,
 		"controlPlaneEndpointPort":                   port,
 		"controlPlaneReplicas":                       clusterSpec.Cluster.Spec.ControlPlaneConfiguration.Count,
-		"kubernetesRepository":                       bundle.KubeDistro.Kubernetes.Repository,
-		"kubernetesVersion":                          bundle.KubeDistro.Kubernetes.Tag,
-		"etcdRepository":                             bundle.KubeDistro.Etcd.Repository,
-		"etcdImageTag":                               bundle.KubeDistro.Etcd.Tag,
-		"corednsRepository":                          bundle.KubeDistro.CoreDNS.Repository,
-		"corednsVersion":                             bundle.KubeDistro.CoreDNS.Tag,
-		"nodeDriverRegistrarImage":                   bundle.KubeDistro.NodeDriverRegistrar.VersionedImage(),
-		"livenessProbeImage":                         bundle.KubeDistro.LivenessProbe.VersionedImage(),
-		"externalAttacherImage":                      bundle.KubeDistro.ExternalAttacher.VersionedImage(),
-		"externalProvisionerImage":                   bundle.KubeDistro.ExternalProvisioner.VersionedImage(),
-		"managerImage":                               bundle.CloudStack.ClusterAPIController.VersionedImage(),
-		"kubeRbacProxyImage":                         bundle.CloudStack.KubeRbacProxy.VersionedImage(),
-		"kubeVipImage":                               bundle.CloudStack.KubeVip.VersionedImage(),
+		"kubernetesRepository":                       versionsBundle.KubeDistro.Kubernetes.Repository,
+		"kubernetesVersion":                          versionsBundle.KubeDistro.Kubernetes.Tag,
+		"etcdRepository":                             versionsBundle.KubeDistro.Etcd.Repository,
+		"etcdImageTag":                               versionsBundle.KubeDistro.Etcd.Tag,
+		"corednsRepository":                          versionsBundle.KubeDistro.CoreDNS.Repository,
+		"corednsVersion":                             versionsBundle.KubeDistro.CoreDNS.Tag,
+		"nodeDriverRegistrarImage":                   versionsBundle.KubeDistro.NodeDriverRegistrar.VersionedImage(),
+		"livenessProbeImage":                         versionsBundle.KubeDistro.LivenessProbe.VersionedImage(),
+		"externalAttacherImage":                      versionsBundle.KubeDistro.ExternalAttacher.VersionedImage(),
+		"externalProvisionerImage":                   versionsBundle.KubeDistro.ExternalProvisioner.VersionedImage(),
+		"managerImage":                               versionsBundle.CloudStack.ClusterAPIController.VersionedImage(),
+		"kubeRbacProxyImage":                         versionsBundle.CloudStack.KubeRbacProxy.VersionedImage(),
+		"kubeVipImage":                               versionsBundle.CloudStack.KubeVip.VersionedImage(),
 		"cloudstackKubeVip":                          !features.IsActive(features.CloudStackKubeVipDisabled()),
 		"cloudstackAvailabilityZones":                datacenterConfigSpec.AvailabilityZones,
 		"cloudstackAnnotationSuffix":                 constants.CloudstackAnnotationSuffix,
@@ -187,8 +188,8 @@ func buildTemplateMapCP(clusterSpec *cluster.Spec) (map[string]interface{}, erro
 		"controllermanagerExtraArgs":                 controllerManagerExtraArgs.ToPartialYaml(),
 		"schedulerExtraArgs":                         sharedExtraArgs.ToPartialYaml(),
 		"format":                                     format,
-		"externalEtcdVersion":                        bundle.KubeDistro.EtcdVersion,
-		"etcdImage":                                  bundle.KubeDistro.EtcdImage.VersionedImage(),
+		"externalEtcdVersion":                        versionsBundle.KubeDistro.EtcdVersion,
+		"etcdImage":                                  versionsBundle.KubeDistro.EtcdImage.VersionedImage(),
 		"eksaSystemNamespace":                        constants.EksaSystemNamespace,
 	}
 
@@ -314,13 +315,7 @@ func fillProxyConfigurations(values map[string]interface{}, clusterSpec *cluster
 }
 
 func buildTemplateMapMD(clusterSpec *cluster.Spec, workerNodeGroupConfiguration v1alpha1.WorkerNodeGroupConfiguration) (map[string]interface{}, error) {
-	bundle, err := clusterSpec.GetCPVersionsBundle()
-	if workerNodeGroupConfiguration.KubernetesVersion != nil {
-		bundle, err = clusterSpec.GetVersionBundles(*workerNodeGroupConfiguration.KubernetesVersion)
-	}
-	if err != nil {
-		return nil, err
-	}
+	versionsBundle := clusterSpec.WorkerNodeGroupVersionsBundle(workerNodeGroupConfiguration)
 	format := "cloud-config"
 	kubeletExtraArgs := clusterapi.SecureTlsCipherSuitesExtraArgs().
 		Append(clusterapi.WorkerNodeLabelsExtraArgs(workerNodeGroupConfiguration)).
@@ -335,7 +330,7 @@ func buildTemplateMapMD(clusterSpec *cluster.Spec, workerNodeGroupConfiguration 
 
 	values := map[string]interface{}{
 		"clusterName":                      clusterSpec.Cluster.Name,
-		"kubernetesVersion":                bundle.KubeDistro.Kubernetes.Tag,
+		"kubernetesVersion":                versionsBundle.KubeDistro.Kubernetes.Tag,
 		"cloudstackAnnotationSuffix":       constants.CloudstackAnnotationSuffix,
 		"cloudstackTemplateId":             workerNodeGroupMachineSpec.Template.Id,
 		"cloudstackTemplateName":           workerNodeGroupMachineSpec.Template.Name,

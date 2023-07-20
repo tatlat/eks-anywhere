@@ -867,12 +867,6 @@ func TestDockerGenerateDeploymentFileWithMirrorAndCertConfig(t *testing.T) {
 		t.Fatalf("failed to generate cluster api spec contents: %v", err)
 	}
 
-	// fmt.Println("CP template starts")
-	// fmt.Println(string(cp))
-	// fmt.Println("CP template ends")
-	// fmt.Println("MD template starts")
-	// fmt.Println(string(md))
-	// fmt.Println("MDtemplate ends")
 	test.AssertContentToFile(t, string(cp), "testdata/expected_results_mirror_with_cert_config_cp.yaml")
 	test.AssertContentToFile(t, string(md), "testdata/expected_results_mirror_with_cert_config_md.yaml")
 }

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	anywherev1 "github.com/aws/eks-anywhere/pkg/api/v1alpha1"
+	"github.com/aws/eks-anywhere/pkg/cluster"
 	"github.com/aws/eks-anywhere/pkg/logger"
 	"github.com/aws/eks-anywhere/pkg/providers/vsphere/internal/templates"
 	releasev1 "github.com/aws/eks-anywhere/release/api/v1alpha1"
@@ -75,13 +76,31 @@ func (d *Defaulter) setDefaultTemplateIfMissing(ctx context.Context, spec *Spec,
 	return nil
 }
 
-func (d *Defaulter) setupDefaultTemplate(ctx context.Context, spec *Spec, machineConfig *anywherev1.VSphereMachineConfig) error {
-	osFamily := machineConfig.Spec.OSFamily
-	vb, err := spec.GetCPVersionsBundle()
-	if err != nil {
-		return err
+func getWorkerNodeGroupForMachineConfig(cluster *anywherev1.Cluster, machineConfig *anywherev1.VSphereMachineConfig) *anywherev1.WorkerNodeGroupConfiguration {
+	for _, wng := range cluster.Spec.WorkerNodeGroupConfigurations {
+		if wng.MachineGroupRef.Name == machineConfig.Name {
+			return &wng
+		}
 	}
-	eksd := vb.EksD
+
+	return nil
+}
+
+func getVersionsBundleForMachineConfig(spec *cluster.Spec, machineConfig *anywherev1.VSphereMachineConfig) *cluster.VersionsBundle {
+	if spec.Cluster.Spec.ControlPlaneConfiguration.MachineGroupRef.Name != machineConfig.Name {
+		wng := getWorkerNodeGroupForMachineConfig(spec.Cluster, machineConfig)
+		if wng != nil {
+			return spec.WorkerNodeGroupVersionsBundle(*wng)
+		}
+	}
+
+	return spec.ControlPlaneVersionsBundle()
+}
+
+func (d *Defaulter) setupDefaultTemplate(ctx context.Context, spec *Spec, machineConfig *anywherev1.VSphereMachineConfig) error {
+	versionsBundle := getVersionsBundleForMachineConfig(spec.Spec, machineConfig)
+	osFamily := machineConfig.Spec.OSFamily
+	eksd := versionsBundle.EksD
 	var ova releasev1.Archive
 	switch osFamily {
 	case anywherev1.Bottlerocket:

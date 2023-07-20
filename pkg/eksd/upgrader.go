@@ -38,18 +38,16 @@ func (u *Upgrader) Upgrade(ctx context.Context, cluster *types.Cluster, currentS
 }
 
 func EksdChangeDiff(currentSpec, newSpec *cluster.Spec) *types.ChangeDiff {
-	cvb, nvb, err := cluster.GetOldAndNewCPVersionBundle(currentSpec, newSpec)
-	if err != nil {
-		return nil
-	}
-	if cvb.EksD.Name != nvb.EksD.Name {
-		logger.V(1).Info("EKS-D change diff ", "oldVersion ", cvb.EksD.Name, "newVersion ", nvb.EksD.Name)
+	currentVersionsBundle := currentSpec.ControlPlaneVersionsBundle()
+	newVersionsBundle := newSpec.ControlPlaneVersionsBundle()
+	if currentVersionsBundle.EksD.Name != newVersionsBundle.EksD.Name {
+		logger.V(1).Info("EKS-D change diff ", "oldVersion ", currentVersionsBundle.EksD.Name, "newVersion ", newVersionsBundle.EksD.Name)
 		return &types.ChangeDiff{
 			ComponentReports: []types.ComponentChangeDiff{
 				{
 					ComponentName: "EKS-D",
-					NewVersion:    nvb.EksD.Name,
-					OldVersion:    cvb.EksD.Name,
+					NewVersion:    newVersionsBundle.EksD.Name,
+					OldVersion:    currentVersionsBundle.EksD.Name,
 				},
 			},
 		}
