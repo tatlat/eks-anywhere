@@ -1753,9 +1753,9 @@ func TestClusterNeedsNewWorkloadTemplateFalse(t *testing.T) {
 	fillClusterSpecWithClusterConfig(clusterSpec, cc)
 	dcConfig := givenDatacenterConfig(t, testClusterConfigMainFilename)
 	machineConfig := givenMachineConfigs(t, testClusterConfigMainFilename)[cc.MachineConfigRefs()[0].Name]
-	wng := cc.Spec.WorkerNodeGroupConfigurations[0]
+	wng := &clusterSpec.Cluster.Spec.WorkerNodeGroupConfigurations[0]
 
-	assert.False(t, NeedsNewWorkloadTemplate(clusterSpec, clusterSpec, dcConfig, dcConfig, machineConfig, machineConfig, wng, *wng.DeepCopy(), test.NewNullLogger()), "expected no spec change to be detected")
+	assert.False(t, NeedsNewWorkloadTemplate(clusterSpec, clusterSpec, dcConfig, dcConfig, machineConfig, machineConfig, wng, wng, test.NewNullLogger()), "expected no spec change to be detected")
 }
 
 func TestClusterUpgradeNeededDatacenterConfigChanged(t *testing.T) {
@@ -2415,7 +2415,7 @@ func TestNeedsNewWorkloadTemplateK8sVersion(t *testing.T) {
 	oldSpec := givenClusterSpec(t, testClusterConfigMainFilename)
 	newK8sSpec := oldSpec.DeepCopy()
 	newK8sSpec.Cluster.Spec.KubernetesVersion = "1.25"
-	wng := oldSpec.Cluster.Spec.WorkerNodeGroupConfigurations[0]
+	wng := &oldSpec.Cluster.Spec.WorkerNodeGroupConfigurations[0]
 	assert.True(t, NeedsNewWorkloadTemplate(oldSpec, newK8sSpec, nil, nil, nil, nil, wng, wng, test.NewNullLogger()))
 }
 
@@ -2423,8 +2423,7 @@ func TestNeedsNewWorkloadTemplateBundleNumber(t *testing.T) {
 	oldSpec := givenClusterSpec(t, testClusterConfigMainFilename)
 	newK8sSpec := oldSpec.DeepCopy()
 	newK8sSpec.Bundles.Spec.Number = 10000
-	wng := oldSpec.Cluster.Spec.WorkerNodeGroupConfigurations[0]
-	assert.True(t, NeedsNewWorkloadTemplate(oldSpec, newK8sSpec, nil, nil, nil, nil, wng, wng, test.NewNullLogger()))
+	assert.True(t, NeedsNewWorkloadTemplate(oldSpec, newK8sSpec, nil, nil, nil, nil, nil, nil, test.NewNullLogger()))
 }
 
 func TestProviderUpdateSecrets(t *testing.T) {
