@@ -73,7 +73,7 @@ func (t *Templater) GenerateUpgradePreflightManifest(ctx context.Context, spec *
 	}
 	v.set(tolerationsList, "preflight", "tolerations")
 
-	uri, version := getChartUriAndVersion(versionsBundle)
+	uri, version := getChartURIAndVersion(versionsBundle)
 
 	kubeVersion, err := getKubeVersionString(spec, versionsBundle)
 	if err != nil {
@@ -146,7 +146,7 @@ func (t *Templater) GenerateManifest(ctx context.Context, spec *cluster.Spec, op
 		o(c)
 	}
 
-	uri, version := getChartUriAndVersion(versionsBundle)
+	uri, version := getChartURIAndVersion(versionsBundle)
 	var manifest []byte
 
 	if spec.Cluster.Spec.RegistryMirrorConfiguration != nil {
@@ -258,7 +258,7 @@ func templateValues(spec *cluster.Spec, versionsBundle *cluster.VersionsBundle) 
 	return val
 }
 
-func getChartUriAndVersion(versionsBundle *cluster.VersionsBundle) (uri, version string) {
+func getChartURIAndVersion(versionsBundle *cluster.VersionsBundle) (uri, version string) {
 	chart := versionsBundle.Cilium.HelmChart
 	uri = fmt.Sprintf("oci://%s", chart.Image())
 	version = chart.Tag()
