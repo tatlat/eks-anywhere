@@ -383,9 +383,6 @@ func TestPreCAPIInstallOnBootstrapSuccess(t *testing.T) {
 	provider.stackInstaller = stackInstaller
 
 	bundle := clusterSpec.ControlPlaneVersionsBundle()
-	if bundle == nil {
-		t.Errorf("Can't get VersionsBundle")
-	}
 
 	stackInstaller.EXPECT().Install(
 		ctx,
@@ -423,9 +420,6 @@ func TestPostWorkloadInitSuccess(t *testing.T) {
 	provider.stackInstaller = stackInstaller
 
 	bundle := clusterSpec.ControlPlaneVersionsBundle()
-	if bundle == nil {
-		t.Error("Can't get VersionsBundle")
-	}
 
 	stackInstaller.EXPECT().Install(
 		ctx,

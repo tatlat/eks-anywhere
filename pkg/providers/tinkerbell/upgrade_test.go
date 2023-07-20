@@ -73,9 +73,6 @@ func TestProviderPreCoreComponentsUpgrade_StackUpgradeError(t *testing.T) {
 
 	expect := "foobar"
 	bundle := tconfig.ClusterSpec.ControlPlaneVersionsBundle()
-	if bundle == nil {
-		t.Error("Can't get VersionsBundle")
-	}
 	tconfig.Installer.EXPECT().
 		Upgrade(
 			gomock.Any(),
@@ -101,9 +98,6 @@ func TestProviderPreCoreComponentsUpgrade_HasBaseboardManagementCRDError(t *test
 	tconfig := NewPreCoreComponentsUpgradeTestConfig(t)
 
 	bundle := tconfig.ClusterSpec.ControlPlaneVersionsBundle()
-	if bundle == nil {
-		t.Error("Can't get VersionsBundle")
-	}
 
 	tconfig.Installer.EXPECT().
 		Upgrade(
@@ -139,9 +133,6 @@ func TestProviderPreCoreComponentsUpgrade_NoBaseboardManagementCRD(t *testing.T)
 	tconfig := NewPreCoreComponentsUpgradeTestConfig(t)
 
 	bundle := tconfig.ClusterSpec.ControlPlaneVersionsBundle()
-	if bundle == nil {
-		t.Error("could not find VersionsBundle")
-	}
 
 	tconfig.Installer.EXPECT().
 		Upgrade(
@@ -451,9 +442,6 @@ func TestProviderPreCoreComponentsUpgrade_RufioConversions(t *testing.T) {
 			tconfig := NewPreCoreComponentsUpgradeTestConfig(t)
 
 			bundle := tconfig.ClusterSpec.ControlPlaneVersionsBundle()
-			if bundle == nil {
-				t.Error("Can't get VersionsBundle")
-			}
 
 			// Configure the mocks to successfully upgrade the Tinkerbell stack using the installer
 			// and identify the need to convert deprecated Rufio custom resources.

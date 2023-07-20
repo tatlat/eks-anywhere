@@ -188,9 +188,6 @@ func TestBundlesRefDefaulter(t *testing.T) {
 
 func validateSpecFromSimpleBundle(t *testing.T, gotSpec *cluster.Spec) {
 	VersionsBundle := gotSpec.ControlPlaneVersionsBundle()
-	if VersionsBundle == nil {
-		t.Errorf("Could not get VersionsBundle")
-	}
 	validateVersionedRepo(t, VersionsBundle.KubeDistro.Kubernetes, "public.ecr.aws/eks-distro/kubernetes", "v1.19.8-eks-1-19-4")
 	validateVersionedRepo(t, VersionsBundle.KubeDistro.CoreDNS, "public.ecr.aws/eks-distro/coredns", "v1.8.0-eks-1-19-4")
 	validateVersionedRepo(t, VersionsBundle.KubeDistro.Etcd, "public.ecr.aws/eks-distro/etcd-io", "v3.4.14-eks-1-19-4")
@@ -382,6 +379,44 @@ func TestGetVersionsBundlesErrorEksdEmpty(t *testing.T) {
 
 	_, err := cluster.NewSpec(config, bundles, []eksdv1.Release{})
 	g.Expect(err).ToNot(BeNil())
+}
+
+func TestWorkerNodeGroupVersionsBundle(t *testing.T) {
+	g := NewWithT(t)
+	kube123 := anywherev1.KubernetesVersion("1.23")
+	config := &cluster.Config{
+		Cluster: &anywherev1.Cluster{
+			Spec: anywherev1.ClusterSpec{
+				KubernetesVersion: anywherev1.Kube124,
+				WorkerNodeGroupConfigurations: []anywherev1.WorkerNodeGroupConfiguration{
+					{
+						KubernetesVersion: &kube123,
+					},
+				},
+			},
+		},
+		OIDCConfigs: map[string]*anywherev1.OIDCConfig{
+			"myconfig": {},
+		},
+		AWSIAMConfigs: map[string]*anywherev1.AWSIamConfig{
+			"myconfig": {},
+		},
+	}
+	bundles := &releasev1.Bundles{
+		Spec: releasev1.BundlesSpec{
+			Number: 2,
+			VersionsBundles: []releasev1.VersionsBundle{
+				{
+					KubeVersion: "1.23",
+				},
+			},
+		},
+	}
+
+	spec, err := cluster.NewSpec(config, bundles, []eksdv1.Release{*test.EksdRelease("1-23")})
+	g.Expect(err).To(BeNil())
+	versionsBundle := spec.WorkerNodeGroupVersionsBundle(spec.Cluster.Spec.WorkerNodeGroupConfigurations[0])
+	g.Expect(versionsBundle).ToNot(BeNil())
 }
 
 func TestGetVersionsBundlesErrorInvalidEksd(t *testing.T) {

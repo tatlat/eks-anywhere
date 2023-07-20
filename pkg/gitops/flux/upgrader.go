@@ -55,9 +55,6 @@ func FluxChangeDiff(currentSpec, newSpec *cluster.Spec) *types.ChangeDiff {
 	}
 	oldVersionsBundle := currentSpec.ControlPlaneVersionsBundle()
 	newVersionsBundle := newSpec.ControlPlaneVersionsBundle()
-	if oldVersionsBundle == nil || newVersionsBundle == nil {
-		return nil
-	}
 	oldVersion := oldVersionsBundle.Flux.Version
 	newVersion := newVersionsBundle.Flux.Version
 	if oldVersion != newVersion {

@@ -876,9 +876,6 @@ func TestVersion(t *testing.T) {
 func TestGetInfrastructureBundle(t *testing.T) {
 	tt := newSnowTest(t)
 	bundle := tt.clusterSpec.ControlPlaneVersionsBundle()
-	if bundle == nil {
-		t.Errorf("can't get VersionsBundle")
-	}
 	want := &types.InfrastructureBundle{
 		FolderName: "infrastructure-snow/v1.0.2/",
 		Manifests: []releasev1alpha1.Manifest{

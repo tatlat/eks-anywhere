@@ -335,9 +335,6 @@ func (p *SnowProvider) validateUpgradeRolloutStrategy(clusterSpec *cluster.Spec)
 func (p *SnowProvider) UpgradeNeeded(ctx context.Context, newSpec, oldSpec *cluster.Spec, c *types.Cluster) (bool, error) {
 	oldVersionBundle := oldSpec.ControlPlaneVersionsBundle()
 	newVersionsBundle := newSpec.ControlPlaneVersionsBundle()
-	if oldVersionBundle == nil || newVersionsBundle == nil {
-		return false, fmt.Errorf("could not find VersionsBundle")
-	}
 	if !bundleImagesEqual(newVersionsBundle.Snow, oldVersionBundle.Snow) {
 		return true, nil
 	}

@@ -100,9 +100,6 @@ func (i *EKSAInstaller) Upgrade(ctx context.Context, log logr.Logger, c *types.C
 	log.V(1).Info("Starting EKS-A components upgrade")
 	oldVersionsBundle := currentSpec.ControlPlaneVersionsBundle()
 	newVersionsBundle := newSpec.ControlPlaneVersionsBundle()
-	if oldVersionsBundle == nil || newVersionsBundle == nil {
-		return nil, fmt.Errorf("could not find VersionsBundle")
-	}
 	oldVersion := oldVersionsBundle.Eksa.Version
 	newVersion := newVersionsBundle.Eksa.Version
 	if err := i.Install(ctx, log, c, newSpec); err != nil {
@@ -238,9 +235,6 @@ func (c *eksaComponents) BuildFromParsed(lookup yamlutil.ObjectLookup) error {
 func EksaChangeDiff(currentSpec, newSpec *cluster.Spec) *types.ChangeDiff {
 	oldVersionsBundle := currentSpec.ControlPlaneVersionsBundle()
 	newVersionsBundle := newSpec.ControlPlaneVersionsBundle()
-	if oldVersionsBundle == nil || newVersionsBundle == nil {
-		return nil
-	}
 
 	if oldVersionsBundle.Eksa.Version != newVersionsBundle.Eksa.Version {
 		return &types.ChangeDiff{
