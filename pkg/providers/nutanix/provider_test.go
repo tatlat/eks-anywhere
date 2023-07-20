@@ -1013,6 +1013,7 @@ func TestNeedsNewControlPlaneTemplate(t *testing.T) {
 	}
 }
 
+// NeedsNewWorkloadTemplate determines if a new workload template is needed.
 func TestNeedsNewWorkloadTemplate(t *testing.T) {
 	tests := []struct {
 		name             string
@@ -1069,7 +1070,10 @@ func TestNeedsNewWorkloadTemplate(t *testing.T) {
 		oldwng := oldClusterSpec.Cluster.Spec.WorkerNodeGroupConfigurations[0]
 		newwng := newClusterSpec.Cluster.Spec.WorkerNodeGroupConfigurations[0]
 
-		assert.Equal(t, tt.expectedResult, NeedsNewWorkloadTemplate(oldClusterSpec, &newClusterSpec, oldMachineConf, &newMachineConf, oldwng, newwng))
+		newWorkerConfig := newClusterSpec.Cluster.Spec.WorkerNodeGroupConfigurations[0]
+		oldWorkerConfig := oldClusterSpec.Cluster.Spec.WorkerNodeGroupConfigurations[0]
+
+		assert.Equal(t, tt.expectedResult, NeedsNewWorkloadTemplate(oldClusterSpec, &newClusterSpec, oldMachineConf, &newMachineConf, newWorkerConfig, oldWorkerConfig))
 	}
 }
 

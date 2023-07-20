@@ -1145,7 +1145,7 @@ func TestPreflightValidationsVsphere(t *testing.T) {
 			k.EXPECT().GetClusters(ctx, workloadCluster).Return(tc.getClusterResponse, nil)
 			k.EXPECT().GetEksaCluster(ctx, workloadCluster, clusterSpec.Cluster.Name).Return(existingClusterSpec.Cluster, nil).MaxTimes(3)
 			if opts.Spec.Cluster.IsManaged() {
-				k.EXPECT().GetEksaCluster(ctx, workloadCluster, workloadCluster.Name).Return(existingClusterSpec.Cluster, nil).MaxTimes(2)
+				k.EXPECT().GetEksaCluster(ctx, workloadCluster, workloadCluster.Name).Return(existingClusterSpec.Cluster, nil).MaxTimes(3)
 				k.EXPECT().GetBundles(ctx, workloadCluster.KubeconfigFile, existingClusterSpec.Cluster.Spec.BundlesRef.Name, existingClusterSpec.Cluster.Spec.BundlesRef.Namespace).Return(bundlesResponse, nil)
 			}
 			k.EXPECT().GetEksaGitOpsConfig(ctx, clusterSpec.Cluster.Spec.GitOpsRef.Name, gomock.Any(), gomock.Any()).Return(existingClusterSpec.GitOpsConfig, nil).MaxTimes(1)

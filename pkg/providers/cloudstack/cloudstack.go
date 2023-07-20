@@ -449,7 +449,11 @@ func needsNewControlPlaneTemplate(oldSpec, newSpec *cluster.Spec, oldCsmc, newCs
 	return NeedNewMachineTemplate(oldSpec.CloudStackDatacenter, newSpec.CloudStackDatacenter, oldCsmc, newCsmc, log)
 }
 
-func NeedsNewWorkloadTemplate(oldSpec, newSpec *cluster.Spec, oldCsdc, newCsdc *v1alpha1.CloudStackDatacenterConfig, oldCsmc, newCsmc *v1alpha1.CloudStackMachineConfig, oldWorker, newWorker v1alpha1.WorkerNodeGroupConfiguration, log logr.Logger) bool {
+// NeedsNewWorkloadTemplate determines if a new workload template is needed.
+func NeedsNewWorkloadTemplate(oldSpec, newSpec *cluster.Spec, oldCsdc, newCsdc *v1alpha1.CloudStackDatacenterConfig, oldCsmc, newCsmc *v1alpha1.CloudStackMachineConfig, log logr.Logger) bool {
+	if oldSpec.Cluster.Spec.KubernetesVersion != newSpec.Cluster.Spec.KubernetesVersion {
+		return true
+	}
 	if oldSpec.Bundles.Spec.Number != newSpec.Bundles.Spec.Number {
 		return true
 	}

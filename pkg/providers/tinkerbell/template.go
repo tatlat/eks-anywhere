@@ -335,8 +335,8 @@ func (p *Provider) generateCAPISpecForCreate(ctx context.Context, clusterSpec *c
 }
 
 func (p *Provider) needsNewMachineTemplate(ctx context.Context, workloadCluster *types.Cluster, currentSpec, newClusterSpec *cluster.Spec, workerNodeGroupConfiguration v1alpha1.WorkerNodeGroupConfiguration, vdc *v1alpha1.TinkerbellDatacenterConfig, prevWorkerNodeGroupConfigs map[string]v1alpha1.WorkerNodeGroupConfiguration) (bool, error) {
-	if oldWorkerNodeGroupConfig, ok := prevWorkerNodeGroupConfigs[workerNodeGroupConfiguration.Name]; ok {
-		return needsNewWorkloadTemplate(currentSpec, newClusterSpec, oldWorkerNodeGroupConfig, workerNodeGroupConfiguration), nil
+	if prev, ok := prevWorkerNodeGroupConfigs[workerNodeGroupConfiguration.Name]; ok {
+		return needsNewWorkloadTemplate(currentSpec, newClusterSpec, workerNodeGroupConfiguration, prev), nil
 	}
 	return true, nil
 }
