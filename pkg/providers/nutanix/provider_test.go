@@ -1067,8 +1067,6 @@ func TestNeedsNewWorkloadTemplate(t *testing.T) {
 		err := yaml.Unmarshal([]byte(nutanixMachineConfigSpec), oldMachineConf)
 		require.NoError(t, err)
 		newMachineConf := tt.newMachineConfig(*oldMachineConf)
-		oldwng := oldClusterSpec.Cluster.Spec.WorkerNodeGroupConfigurations[0]
-		newwng := newClusterSpec.Cluster.Spec.WorkerNodeGroupConfigurations[0]
 
 		newWorkerConfig := newClusterSpec.Cluster.Spec.WorkerNodeGroupConfigurations[0]
 		oldWorkerConfig := oldClusterSpec.Cluster.Spec.WorkerNodeGroupConfigurations[0]
