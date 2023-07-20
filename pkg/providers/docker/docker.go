@@ -231,8 +231,8 @@ func kubeletCgroupDriverExtraArgs(kubeVersion v1alpha1.KubernetesVersion) (clust
 }
 
 func buildTemplateMapCP(clusterSpec *cluster.Spec) (map[string]interface{}, error) {
-	bundle := clusterSpec.ControlPlaneVersionsBundle()
-	if bundle == nil {
+	versionsBundle := clusterSpec.ControlPlaneVersionsBundle()
+	if versionsBundle == nil {
 		return nil, fmt.Errorf("could not find VersionsBundle")
 	}
 	etcdExtraArgs := clusterapi.SecureEtcdTlsCipherSuitesExtraArgs()
@@ -259,25 +259,25 @@ func buildTemplateMapCP(clusterSpec *cluster.Spec) (map[string]interface{}, erro
 	values := map[string]interface{}{
 		"clusterName":                   clusterSpec.Cluster.Name,
 		"control_plane_replicas":        clusterSpec.Cluster.Spec.ControlPlaneConfiguration.Count,
-		"kubernetesRepository":          bundle.KubeDistro.Kubernetes.Repository,
-		"kubernetesVersion":             bundle.KubeDistro.Kubernetes.Tag,
-		"etcdRepository":                bundle.KubeDistro.Etcd.Repository,
-		"etcdVersion":                   bundle.KubeDistro.Etcd.Tag,
-		"corednsRepository":             bundle.KubeDistro.CoreDNS.Repository,
-		"corednsVersion":                bundle.KubeDistro.CoreDNS.Tag,
-		"kindNodeImage":                 bundle.EksD.KindNode.VersionedImage(),
+		"kubernetesRepository":          versionsBundle.KubeDistro.Kubernetes.Repository,
+		"kubernetesVersion":             versionsBundle.KubeDistro.Kubernetes.Tag,
+		"etcdRepository":                versionsBundle.KubeDistro.Etcd.Repository,
+		"etcdVersion":                   versionsBundle.KubeDistro.Etcd.Tag,
+		"corednsRepository":             versionsBundle.KubeDistro.CoreDNS.Repository,
+		"corednsVersion":                versionsBundle.KubeDistro.CoreDNS.Tag,
+		"kindNodeImage":                 versionsBundle.EksD.KindNode.VersionedImage(),
 		"etcdExtraArgs":                 etcdExtraArgs.ToPartialYaml(),
 		"etcdCipherSuites":              crypto.SecureCipherSuitesString(),
 		"apiserverExtraArgs":            apiServerExtraArgs.ToPartialYaml(),
 		"controllermanagerExtraArgs":    controllerManagerExtraArgs.ToPartialYaml(),
 		"schedulerExtraArgs":            sharedExtraArgs.ToPartialYaml(),
 		"kubeletExtraArgs":              kubeletExtraArgs.ToPartialYaml(),
-		"externalEtcdVersion":           bundle.KubeDistro.EtcdVersion,
+		"externalEtcdVersion":           versionsBundle.KubeDistro.EtcdVersion,
 		"eksaSystemNamespace":           constants.EksaSystemNamespace,
 		"podCidrs":                      clusterSpec.Cluster.Spec.ClusterNetwork.Pods.CidrBlocks,
 		"serviceCidrs":                  clusterSpec.Cluster.Spec.ClusterNetwork.Services.CidrBlocks,
-		"haproxyImageRepository":        getHAProxyImageRepo(bundle.Haproxy.Image),
-		"haproxyImageTag":               bundle.Haproxy.Image.Tag(),
+		"haproxyImageRepository":        getHAProxyImageRepo(versionsBundle.Haproxy.Image),
+		"haproxyImageTag":               versionsBundle.Haproxy.Image.Tag(),
 		"workerNodeGroupConfigurations": clusterSpec.Cluster.Spec.WorkerNodeGroupConfigurations,
 	}
 
@@ -312,10 +312,7 @@ func buildTemplateMapMD(clusterSpec *cluster.Spec, workerNodeGroupConfiguration 
 	if workerNodeGroupConfiguration.KubernetesVersion != nil {
 		kubeVersion = *workerNodeGroupConfiguration.KubernetesVersion
 	}
-	bundle := clusterSpec.WorkerNodeGroupVersionsBundle(workerNodeGroupConfiguration)
-	if bundle == nil {
-		return nil, fmt.Errorf("could not find VersionsBundle for worker node")
-	}
+	versionsBundle := clusterSpec.WorkerNodeGroupVersionsBundle(workerNodeGroupConfiguration)
 	kubeletExtraArgs := clusterapi.SecureTlsCipherSuitesExtraArgs().
 		Append(clusterapi.WorkerNodeLabelsExtraArgs(workerNodeGroupConfiguration)).
 		Append(clusterapi.ResolvConfExtraArgs(clusterSpec.Cluster.Spec.ClusterNetwork.DNS.ResolvConf))
@@ -329,8 +326,8 @@ func buildTemplateMapMD(clusterSpec *cluster.Spec, workerNodeGroupConfiguration 
 	}
 	values := map[string]interface{}{
 		"clusterName":           clusterSpec.Cluster.Name,
-		"kubernetesVersion":     bundle.KubeDistro.Kubernetes.Tag,
-		"kindNodeImage":         bundle.EksD.KindNode.VersionedImage(),
+		"kubernetesVersion":     versionsBundle.KubeDistro.Kubernetes.Tag,
+		"kindNodeImage":         versionsBundle.EksD.KindNode.VersionedImage(),
 		"eksaSystemNamespace":   constants.EksaSystemNamespace,
 		"kubeletExtraArgs":      kubeletExtraArgs.ToPartialYaml(),
 		"workerReplicas":        *workerNodeGroupConfiguration.Count,
@@ -544,8 +541,8 @@ func getUpdatedKubeConfigContent(content *[]byte, dockerLbPort string) {
 }
 
 func (p *provider) Version(clusterSpec *cluster.Spec) string {
-	bundle := clusterSpec.ControlPlaneVersionsBundle()
-	return bundle.Docker.Version
+	versionsBundle := clusterSpec.ControlPlaneVersionsBundle()
+	return versionsBundle.Docker.Version
 }
 
 func (p *provider) EnvMap(_ *cluster.Spec) (map[string]string, error) {
@@ -563,15 +560,15 @@ func (p *provider) GetDeployments() map[string][]string {
 }
 
 func (p *provider) GetInfrastructureBundle(clusterSpec *cluster.Spec) *types.InfrastructureBundle {
-	bundle := clusterSpec.ControlPlaneVersionsBundle()
-	folderName := fmt.Sprintf("infrastructure-docker/%s/", bundle.Docker.Version)
+	versionsBundle := clusterSpec.ControlPlaneVersionsBundle()
+	folderName := fmt.Sprintf("infrastructure-docker/%s/", versionsBundle.Docker.Version)
 
 	infraBundle := types.InfrastructureBundle{
 		FolderName: folderName,
 		Manifests: []releasev1alpha1.Manifest{
-			bundle.Docker.Components,
-			bundle.Docker.Metadata,
-			bundle.Docker.ClusterTemplate,
+			versionsBundle.Docker.Components,
+			versionsBundle.Docker.Metadata,
+			versionsBundle.Docker.ClusterTemplate,
 		},
 	}
 

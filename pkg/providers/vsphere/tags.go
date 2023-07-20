@@ -19,10 +19,10 @@ func requiredTemplateTags(clusterSpec *cluster.Spec, machineConfig *v1alpha1.VSp
 }
 
 func requiredTemplateTagsByCategory(clusterSpec *cluster.Spec, machineConfig *v1alpha1.VSphereMachineConfig) map[string][]string {
-	bundle := getVersionsBundleForMachineConfig(clusterSpec, machineConfig)
+	versionsBundle := getVersionsBundleForMachineConfig(clusterSpec, machineConfig)
 	osFamily := machineConfig.Spec.OSFamily
 	return map[string][]string{
-		"eksdRelease": {fmt.Sprintf("eksdRelease:%s", bundle.EksD.Name)},
+		"eksdRelease": {fmt.Sprintf("eksdRelease:%s", versionsBundle.EksD.Name)},
 		"os":          {fmt.Sprintf("os:%s", strings.ToLower(string(osFamily)))},
 	}
 }

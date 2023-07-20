@@ -571,8 +571,8 @@ func (p *Provider) UpdateKubeConfig(content *[]byte, clusterName string) error {
 
 // Version returns the nutanix version from the VersionsBundle.
 func (p *Provider) Version(clusterSpec *cluster.Spec) string {
-	bundle := clusterSpec.ControlPlaneVersionsBundle()
-	return bundle.Nutanix.Version
+	versionsBundle := clusterSpec.ControlPlaneVersionsBundle()
+	return versionsBundle.Nutanix.Version
 }
 
 func (p *Provider) EnvMap(_ *cluster.Spec) (map[string]string, error) {
@@ -595,11 +595,11 @@ func (p *Provider) GetDeployments() map[string][]string {
 }
 
 func (p *Provider) GetInfrastructureBundle(clusterSpec *cluster.Spec) *types.InfrastructureBundle {
-	bundle := clusterSpec.ControlPlaneVersionsBundle()
+	versionsBundle := clusterSpec.ControlPlaneVersionsBundle()
 	manifests := []releasev1alpha1.Manifest{
-		bundle.Nutanix.Components,
-		bundle.Nutanix.Metadata,
-		bundle.Nutanix.ClusterTemplate,
+		versionsBundle.Nutanix.Components,
+		versionsBundle.Nutanix.Metadata,
+		versionsBundle.Nutanix.ClusterTemplate,
 	}
 	folderName := fmt.Sprintf("infrastructure-nutanix/%s/", p.Version(clusterSpec))
 	infraBundle := types.InfrastructureBundle{

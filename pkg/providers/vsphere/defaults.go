@@ -98,9 +98,9 @@ func getVersionsBundleForMachineConfig(spec *cluster.Spec, machineConfig *anywhe
 }
 
 func (d *Defaulter) setupDefaultTemplate(ctx context.Context, spec *Spec, machineConfig *anywherev1.VSphereMachineConfig) error {
-	bundle := getVersionsBundleForMachineConfig(spec.Spec, machineConfig)
+	versionsBundle := getVersionsBundleForMachineConfig(spec.Spec, machineConfig)
 	osFamily := machineConfig.Spec.OSFamily
-	eksd := bundle.EksD
+	eksd := versionsBundle.EksD
 	var ova releasev1.Archive
 	switch osFamily {
 	case anywherev1.Bottlerocket:

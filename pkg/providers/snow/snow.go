@@ -189,8 +189,8 @@ func (p *SnowProvider) UpdateKubeConfig(content *[]byte, clusterName string) err
 }
 
 func (p *SnowProvider) Version(clusterSpec *cluster.Spec) string {
-	bundle := clusterSpec.ControlPlaneVersionsBundle()
-	return bundle.Snow.Version
+	versionsBundle := clusterSpec.ControlPlaneVersionsBundle()
+	return versionsBundle.Snow.Version
 }
 
 func (p *SnowProvider) EnvMap(clusterSpec *cluster.Spec) (map[string]string, error) {
@@ -198,9 +198,9 @@ func (p *SnowProvider) EnvMap(clusterSpec *cluster.Spec) (map[string]string, err
 	envMap[snowCredentialsKey] = string(clusterSpec.SnowCredentialsSecret.Data[v1alpha1.SnowCredentialsKey])
 	envMap[snowCertsKey] = string(clusterSpec.SnowCredentialsSecret.Data[v1alpha1.SnowCertificatesKey])
 
-	bundle := clusterSpec.ControlPlaneVersionsBundle()
+	versionsBundle := clusterSpec.ControlPlaneVersionsBundle()
 
-	envMap["SNOW_CONTROLLER_IMAGE"] = bundle.Snow.Manager.VersionedImage()
+	envMap["SNOW_CONTROLLER_IMAGE"] = versionsBundle.Snow.Manager.VersionedImage()
 
 	return envMap, nil
 }
@@ -212,14 +212,14 @@ func (p *SnowProvider) GetDeployments() map[string][]string {
 }
 
 func (p *SnowProvider) GetInfrastructureBundle(clusterSpec *cluster.Spec) *types.InfrastructureBundle {
-	bundle := clusterSpec.ControlPlaneVersionsBundle()
-	folderName := fmt.Sprintf("infrastructure-snow/%s/", bundle.Snow.Version)
+	versionsBundle := clusterSpec.ControlPlaneVersionsBundle()
+	folderName := fmt.Sprintf("infrastructure-snow/%s/", versionsBundle.Snow.Version)
 
 	infraBundle := types.InfrastructureBundle{
 		FolderName: folderName,
 		Manifests: []releasev1alpha1.Manifest{
-			bundle.Snow.Components,
-			bundle.Snow.Metadata,
+			versionsBundle.Snow.Components,
+			versionsBundle.Snow.Metadata,
 		},
 	}
 	return &infraBundle

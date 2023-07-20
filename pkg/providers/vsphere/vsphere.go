@@ -850,8 +850,8 @@ func (p *vsphereProvider) PostWorkloadInit(ctx context.Context, cluster *types.C
 }
 
 func (p *vsphereProvider) Version(clusterSpec *cluster.Spec) string {
-	bundle := clusterSpec.ControlPlaneVersionsBundle()
-	return bundle.VSphere.Version
+	versionsBundle := clusterSpec.ControlPlaneVersionsBundle()
+	return versionsBundle.VSphere.Version
 }
 
 func (p *vsphereProvider) EnvMap(_ *cluster.Spec) (map[string]string, error) {
@@ -873,15 +873,15 @@ func (p *vsphereProvider) GetDeployments() map[string][]string {
 }
 
 func (p *vsphereProvider) GetInfrastructureBundle(clusterSpec *cluster.Spec) *types.InfrastructureBundle {
-	bundle := clusterSpec.ControlPlaneVersionsBundle()
-	folderName := fmt.Sprintf("infrastructure-vsphere/%s/", bundle.VSphere.Version)
+	versionsBundle := clusterSpec.ControlPlaneVersionsBundle()
+	folderName := fmt.Sprintf("infrastructure-vsphere/%s/", versionsBundle.VSphere.Version)
 
 	infraBundle := types.InfrastructureBundle{
 		FolderName: folderName,
 		Manifests: []releasev1alpha1.Manifest{
-			bundle.VSphere.Components,
-			bundle.VSphere.Metadata,
-			bundle.VSphere.ClusterTemplate,
+			versionsBundle.VSphere.Components,
+			versionsBundle.VSphere.Metadata,
+			versionsBundle.VSphere.ClusterTemplate,
 		},
 	}
 	return &infraBundle

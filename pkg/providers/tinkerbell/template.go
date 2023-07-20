@@ -362,7 +362,7 @@ func buildTemplateMapCP(
 	etcdTemplateOverride string,
 	datacenterSpec v1alpha1.TinkerbellDatacenterConfigSpec,
 ) (map[string]interface{}, error) {
-	bundle := clusterSpec.ControlPlaneVersionsBundle()
+	versionsBundle := clusterSpec.ControlPlaneVersionsBundle()
 	format := "cloud-config"
 
 	apiServerExtraArgs := clusterapi.OIDCToExtraArgs(clusterSpec.OIDCConfig).
@@ -386,20 +386,20 @@ func buildTemplateMapCP(
 		"controlPlaneSshUsername":       controlPlaneMachineSpec.Users[0].Name,
 		"eksaSystemNamespace":           constants.EksaSystemNamespace,
 		"format":                        format,
-		"kubernetesVersion":             bundle.KubeDistro.Kubernetes.Tag,
-		"kubeVipImage":                  bundle.Tinkerbell.KubeVip.VersionedImage(),
+		"kubernetesVersion":             versionsBundle.KubeDistro.Kubernetes.Tag,
+		"kubeVipImage":                  versionsBundle.Tinkerbell.KubeVip.VersionedImage(),
 		"podCidrs":                      clusterSpec.Cluster.Spec.ClusterNetwork.Pods.CidrBlocks,
 		"serviceCidrs":                  clusterSpec.Cluster.Spec.ClusterNetwork.Services.CidrBlocks,
 		"apiserverExtraArgs":            apiServerExtraArgs.ToPartialYaml(),
 		"baseRegistry":                  "", // TODO: need to get this values for creating template IMAGE_URL
 		"osDistro":                      "", // TODO: need to get this values for creating template IMAGE_URL
 		"osVersion":                     "", // TODO: need to get this values for creating template IMAGE_URL
-		"kubernetesRepository":          bundle.KubeDistro.Kubernetes.Repository,
-		"corednsRepository":             bundle.KubeDistro.CoreDNS.Repository,
-		"corednsVersion":                bundle.KubeDistro.CoreDNS.Tag,
-		"etcdRepository":                bundle.KubeDistro.Etcd.Repository,
-		"etcdImageTag":                  bundle.KubeDistro.Etcd.Tag,
-		"externalEtcdVersion":           bundle.KubeDistro.EtcdVersion,
+		"kubernetesRepository":          versionsBundle.KubeDistro.Kubernetes.Repository,
+		"corednsRepository":             versionsBundle.KubeDistro.CoreDNS.Repository,
+		"corednsVersion":                versionsBundle.KubeDistro.CoreDNS.Tag,
+		"etcdRepository":                versionsBundle.KubeDistro.Etcd.Repository,
+		"etcdImageTag":                  versionsBundle.KubeDistro.Etcd.Tag,
+		"externalEtcdVersion":           versionsBundle.KubeDistro.EtcdVersion,
 		"etcdCipherSuites":              crypto.SecureCipherSuitesString(),
 		"kubeletExtraArgs":              kubeletExtraArgs.ToPartialYaml(),
 		"hardwareSelector":              controlPlaneMachineSpec.HardwareSelector,
@@ -445,10 +445,10 @@ func buildTemplateMapCP(
 
 	if controlPlaneMachineSpec.OSFamily == v1alpha1.Bottlerocket {
 		values["format"] = string(v1alpha1.Bottlerocket)
-		values["pauseRepository"] = bundle.KubeDistro.Pause.Image()
-		values["pauseVersion"] = bundle.KubeDistro.Pause.Tag()
-		values["bottlerocketBootstrapRepository"] = bundle.BottleRocketHostContainers.KubeadmBootstrap.Image()
-		values["bottlerocketBootstrapVersion"] = bundle.BottleRocketHostContainers.KubeadmBootstrap.Tag()
+		values["pauseRepository"] = versionsBundle.KubeDistro.Pause.Image()
+		values["pauseVersion"] = versionsBundle.KubeDistro.Pause.Tag()
+		values["bottlerocketBootstrapRepository"] = versionsBundle.BottleRocketHostContainers.KubeadmBootstrap.Image()
+		values["bottlerocketBootstrapVersion"] = versionsBundle.BottleRocketHostContainers.KubeadmBootstrap.Tag()
 	}
 
 	if clusterSpec.AWSIamConfig != nil {
@@ -481,10 +481,7 @@ func buildTemplateMapMD(
 	workerTemplateOverride string,
 	datacenterSpec v1alpha1.TinkerbellDatacenterConfigSpec,
 ) (map[string]interface{}, error) {
-	bundle := clusterSpec.WorkerNodeGroupVersionsBundle(workerNodeGroupConfiguration)
-	if bundle == nil {
-		return nil, fmt.Errorf("could not find VersionsBundle for worker node")
-	}
+	versionsBundle := clusterSpec.WorkerNodeGroupVersionsBundle(workerNodeGroupConfiguration)
 	format := "cloud-config"
 
 	kubeletExtraArgs := clusterapi.SecureTlsCipherSuitesExtraArgs().
@@ -496,7 +493,7 @@ func buildTemplateMapMD(
 		"eksaSystemNamespace":    constants.EksaSystemNamespace,
 		"kubeletExtraArgs":       kubeletExtraArgs.ToPartialYaml(),
 		"format":                 format,
-		"kubernetesVersion":      bundle.KubeDistro.Kubernetes.Tag,
+		"kubernetesVersion":      versionsBundle.KubeDistro.Kubernetes.Tag,
 		"workerNodeGroupName":    workerNodeGroupConfiguration.Name,
 		"workerSshAuthorizedKey": workerNodeGroupMachineSpec.Users[0].SshAuthorizedKeys[0],
 		"workerSshUsername":      workerNodeGroupMachineSpec.Users[0].Name,
@@ -506,10 +503,10 @@ func buildTemplateMapMD(
 
 	if workerNodeGroupMachineSpec.OSFamily == v1alpha1.Bottlerocket {
 		values["format"] = string(v1alpha1.Bottlerocket)
-		values["pauseRepository"] = bundle.KubeDistro.Pause.Image()
-		values["pauseVersion"] = bundle.KubeDistro.Pause.Tag()
-		values["bottlerocketBootstrapRepository"] = bundle.BottleRocketHostContainers.KubeadmBootstrap.Image()
-		values["bottlerocketBootstrapVersion"] = bundle.BottleRocketHostContainers.KubeadmBootstrap.Tag()
+		values["pauseRepository"] = versionsBundle.KubeDistro.Pause.Image()
+		values["pauseVersion"] = versionsBundle.KubeDistro.Pause.Tag()
+		values["bottlerocketBootstrapRepository"] = versionsBundle.BottleRocketHostContainers.KubeadmBootstrap.Image()
+		values["bottlerocketBootstrapVersion"] = versionsBundle.BottleRocketHostContainers.KubeadmBootstrap.Tag()
 	}
 
 	if clusterSpec.Cluster.Spec.RegistryMirrorConfiguration != nil {

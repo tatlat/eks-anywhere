@@ -66,9 +66,6 @@ func listOvas(context context.Context, clusterSpecPath, bundlesOverride string) 
 	}
 
 	bundle := clusterSpec.ControlPlaneVersionsBundle()
-	if bundle == nil {
-		return err
-	}
 
 	titler := cases.Title(language.English)
 	for _, ova := range bundle.Ovas() {

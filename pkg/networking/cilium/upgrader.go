@@ -83,18 +83,15 @@ func (u *Upgrader) Upgrade(ctx context.Context, cluster *types.Cluster, currentS
 		return nil, fmt.Errorf("failed deleting cilium preflight check: %v", err)
 	}
 
+	versionsBundle := currentSpec.ControlPlaneVersionsBundle()
+
 	logger.V(3).Info("Generating Cilium upgrade manifest")
-	currentKubeVersion, err := getKubeVersionString(currentSpec)
+	currentKubeVersion, err := getKubeVersionString(currentSpec, versionsBundle)
 	if err != nil {
 		return nil, err
 	}
 
-	bundles := currentSpec.ControlPlaneVersionsBundle()
-	if bundles == nil {
-		return nil, fmt.Errorf("could not find VersionsBundle")
-	}
-
-	previousCiliumVersion, err := semver.New(bundles.Cilium.Version)
+	previousCiliumVersion, err := semver.New(versionsBundle.Cilium.Version)
 	if err != nil {
 		return nil, err
 	}

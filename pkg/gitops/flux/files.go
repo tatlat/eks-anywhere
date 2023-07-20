@@ -150,13 +150,13 @@ func (g *FileGenerator) WriteFluxSync() error {
 }
 
 func (g *FileGenerator) WriteFluxPatch(clusterSpec *cluster.Spec) error {
-	bundle := clusterSpec.ControlPlaneVersionsBundle()
+	versionsBundle := clusterSpec.ControlPlaneVersionsBundle()
 	values := map[string]string{
 		"Namespace":                   clusterSpec.FluxConfig.Spec.SystemNamespace,
-		"SourceControllerImage":       bundle.Flux.SourceController.VersionedImage(),
-		"KustomizeControllerImage":    bundle.Flux.KustomizeController.VersionedImage(),
-		"HelmControllerImage":         bundle.Flux.HelmController.VersionedImage(),
-		"NotificationControllerImage": bundle.Flux.NotificationController.VersionedImage(),
+		"SourceControllerImage":       versionsBundle.Flux.SourceController.VersionedImage(),
+		"KustomizeControllerImage":    versionsBundle.Flux.KustomizeController.VersionedImage(),
+		"HelmControllerImage":         versionsBundle.Flux.HelmController.VersionedImage(),
+		"NotificationControllerImage": versionsBundle.Flux.NotificationController.VersionedImage(),
 	}
 	if path, err := g.fluxTemplater.WriteToFile(fluxPatchContent, values, fluxPatchFileName, filewriter.PersistentFile); err != nil {
 		return fmt.Errorf("creating flux-system patch manifest file into %s: %v", path, err)
