@@ -447,8 +447,8 @@ func NeedsNewWorkloadTemplate(oldSpec, newSpec *cluster.Spec, oldCsdc, newCsdc *
 	if oldSpec.Bundles.Spec.Number != newSpec.Bundles.Spec.Number {
 		return true
 	}
-	if !v1alpha1.WorkerNodeGroupConfigurationSliceTaintsEqual(oldSpec.Cluster.Spec.WorkerNodeGroupConfigurations, newSpec.Cluster.Spec.WorkerNodeGroupConfigurations) ||
-		!v1alpha1.WorkerNodeGroupConfigurationsLabelsMapEqual(oldSpec.Cluster.Spec.WorkerNodeGroupConfigurations, newSpec.Cluster.Spec.WorkerNodeGroupConfigurations) ||
+	if !v1alpha1.TaintsSliceEqual(oldWorker.Taints, newWorker.Taints) ||
+		!v1alpha1.MapEqual(oldWorker.Labels, newWorker.Labels) ||
 		!v1alpha1.WorkerNodeGroupConfigurationKubeVersionUnchanged(oldWorker, newWorker, oldSpec.Cluster, newSpec.Cluster) {
 		return true
 	}
@@ -471,6 +471,7 @@ func needsNewEtcdTemplate(oldSpec, newSpec *cluster.Spec, oldCsmc, newCsmc *v1al
 
 func (p *cloudstackProvider) needsNewMachineTemplate(ctx context.Context, workloadCluster *types.Cluster, currentSpec, newClusterSpec *cluster.Spec, workerNodeGroupConfiguration v1alpha1.WorkerNodeGroupConfiguration, csdc *v1alpha1.CloudStackDatacenterConfig, prevWorkerNodeGroupConfigs map[string]v1alpha1.WorkerNodeGroupConfiguration) (bool, error) {
 	if oldWorkerNodeGroup, ok := prevWorkerNodeGroupConfigs[workerNodeGroupConfiguration.Name]; ok {
+		fmt.Printf("")
 		newWorkerMachineConfig := newClusterSpec.CloudStackMachineConfigs[workerNodeGroupConfiguration.MachineGroupRef.Name]
 		oldWorkerMachineConfig, err := p.providerKubectlClient.GetEksaCloudStackMachineConfig(ctx, oldWorkerNodeGroup.MachineGroupRef.Name, workloadCluster.KubeconfigFile, newClusterSpec.Cluster.Namespace)
 		if err != nil {
@@ -639,7 +640,9 @@ func (p *cloudstackProvider) getControlPlaneNameForCAPISpecUpgrade(ctx context.C
 	if err != nil {
 		return "", err
 	}
-	if !needsNewControlPlaneTemplate(currentSpec, newClusterSpec, controlPlaneVmc, controlPlaneMachineConfig, p.log) {
+	needs := needsNewControlPlaneTemplate(currentSpec, newClusterSpec, controlPlaneVmc, controlPlaneMachineConfig, p.log)
+	fmt.Printf("cloudstack.go line 643: needsCPTemplate: %v \n", needs)
+	if !needs {
 		cp, err := p.providerKubectlClient.GetKubeadmControlPlane(ctx, workloadCluster, oldCluster.Name, executables.WithCluster(bootstrapCluster), executables.WithNamespace(constants.EksaSystemNamespace))
 		if err != nil {
 			return "", err
@@ -660,10 +663,12 @@ func (p *cloudstackProvider) getWorkloadTemplateSpecForCAPISpecUpgrade(ctx conte
 		if err != nil {
 			return nil, err
 		}
+		fmt.Printf("cloudstack.go line 661: needsWorkloadTemplate for %v: %v \n", workerNodeGroupConfiguration.Name, needsNewWorkloadTemplate)
 		needsNewKubeadmConfigTemplate, err := p.needsNewKubeadmConfigTemplate(workerNodeGroupConfiguration, previousWorkerNodeGroupConfigs)
 		if err != nil {
 			return nil, err
 		}
+		fmt.Printf("cloudstack.go line 666: needsKubeadmTemplate for %v: %v \n", workerNodeGroupConfiguration.Name, needsNewKubeadmConfigTemplate)
 		if !needsNewKubeadmConfigTemplate {
 			mdName := machineDeploymentName(newClusterSpec.Cluster.Name, workerNodeGroupConfiguration.Name)
 			md, err := p.providerKubectlClient.GetMachineDeployment(ctx, mdName, executables.WithCluster(bootstrapCluster), executables.WithNamespace(constants.EksaSystemNamespace))

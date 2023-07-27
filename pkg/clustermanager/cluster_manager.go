@@ -586,6 +586,14 @@ func (c *ClusterManager) UpgradeCluster(ctx context.Context, managementCluster, 
 	if err = c.writeCAPISpecFile(newClusterSpec.Cluster.Name, templater.AppendYamlResources(cpContent, mdContent)); err != nil {
 		return err
 	}
+
+	if err == nil {
+		cpStuff := string(cpContent) + "\n"
+		mdStuff := string(mdContent) + "\n"
+		fmt.Printf("%v \n %v", cpStuff, mdStuff)
+		return fmt.Errorf("exiting line 593 cluster_manager.go")
+	}
+
 	err = c.clusterClient.ApplyKubeSpecFromBytesWithNamespace(ctx, managementCluster, cpContent, constants.EksaSystemNamespace)
 	if err != nil {
 		return fmt.Errorf("applying capi control plane spec: %v", err)
