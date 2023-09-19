@@ -46,16 +46,19 @@ var requiredTinkerbellEnvVars = []string{
 	tinkerbellImageUbuntu125EnvVar,
 	tinkerbellImageUbuntu126EnvVar,
 	tinkerbellImageUbuntu127EnvVar,
+	tinkerbellImageUbuntu128EnvVar,
 	tinkerbellImageUbuntu2204Kubernetes123EnvVar,
 	tinkerbellImageUbuntu2204Kubernetes124EnvVar,
 	tinkerbellImageUbuntu2204Kubernetes125EnvVar,
 	tinkerbellImageUbuntu2204Kubernetes126EnvVar,
 	tinkerbellImageUbuntu2204Kubernetes127EnvVar,
+	tinkerbellImageUbuntu2204Kubernetes128EnvVar,
 	tinkerbellImageRedHat123EnvVar,
 	tinkerbellImageRedHat124EnvVar,
 	tinkerbellImageRedHat125EnvVar,
 	tinkerbellImageRedHat126EnvVar,
 	tinkerbellImageRedHat127EnvVar,
+	tinkerbellImageRedHat128EnvVar,
 	tinkerbellInventoryCsvFilePathEnvVar,
 	tinkerbellSSHAuthorizedKey,
 }
@@ -235,7 +238,7 @@ func WithRedHat127Tinkerbell() TinkerbellOpt {
 	return withKubeVersionAndOS(anywherev1.Kube127, RedHat8, nil)
 }
 
-// WithRedHat128Tinkerbell tink test with redhat 1.27.
+// WithRedHat128Tinkerbell tink test with redhat 1.28.
 func WithRedHat128Tinkerbell() TinkerbellOpt {
 	return withKubeVersionAndOS(anywherev1.Kube128, RedHat8, nil)
 }
