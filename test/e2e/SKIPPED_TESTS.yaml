@@ -23,6 +23,7 @@ skipped_tests:
 - TestCloudStackKubernetes128MultiEndpointSimpleFlow
 
 # These tests will fail until there is a new latest minor release version as 16.2 has a preflight check to prevent k8s version > 1.24
+- TestCloudStackKubernetes124WithOIDCManagementClusterUpgradeFromLatestSideEffects
 - TestCloudStackKubernetes125WithOIDCManagementClusterUpgradeFromLatestSideEffects
 - TestCloudStackKubernetes126WithOIDCManagementClusterUpgradeFromLatestSideEffects
 - TestCloudStackKubernetes127WithOIDCManagementClusterUpgradeFromLatestSideEffects
