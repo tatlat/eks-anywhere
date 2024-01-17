@@ -1918,7 +1918,7 @@ func TestProviderBootstrapSetup(t *testing.T) {
 		t.Fatalf("template execute error: %v", err)
 	}
 
-	err = provider.PostBootstrapSetup(ctx, clusterConfig, &cluster)
+	err = provider.PostCAPIInstallSetup(ctx, clusterConfig, &cluster)
 	if err != nil {
 		t.Fatalf("BootstrapSetup error %v", err)
 	}

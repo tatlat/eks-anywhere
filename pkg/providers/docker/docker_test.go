@@ -1054,3 +1054,21 @@ func TestDockerWriteKubeconfig(t *testing.T) {
 		}
 	}
 }
+
+func TestPostCAPIInstallsetup(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	ctx := context.Background()
+	client := dockerMocks.NewMockProviderClient(mockCtrl)
+	kubectl := dockerMocks.NewMockProviderKubectlClient(mockCtrl)
+	provider := docker.NewProvider(&v1alpha1.DockerDatacenterConfig{}, client, kubectl, test.FakeNow)
+	clusterObj := &types.Cluster{Name: "node"}
+
+	if provider == nil {
+		t.Fatalf("provider object is nil")
+	}
+
+	err := provider.PostCAPIInstallSetup(ctx, &v1alpha1.Cluster{}, clusterObj)
+	if err != nil {
+		t.Fatalf("failed to setup PostCAPIInstallSetup: %v", err)
+	}
+}

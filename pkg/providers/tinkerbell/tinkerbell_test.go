@@ -593,7 +593,7 @@ func TestPostBootstrapSetupSuccess(t *testing.T) {
 		t.Fatalf("failed to read hardware csv: %v", err)
 	}
 
-	err := provider.PostBootstrapSetup(ctx, provider.clusterConfig, cluster)
+	err := provider.PostCAPIInstallSetup(ctx, provider.clusterConfig, cluster)
 	if err != nil {
 		t.Fatalf("failed PostBootstrapSetup: %v", err)
 	}
@@ -623,7 +623,7 @@ func TestPostBootstrapSetupWaitForRufioMachinesFail(t *testing.T) {
 		t.Fatalf("failed to read hardware csv: %v", err)
 	}
 
-	err := provider.PostBootstrapSetup(ctx, provider.clusterConfig, cluster)
+	err := provider.PostCAPIInstallSetup(ctx, provider.clusterConfig, cluster)
 	assert.Error(t, err, "PostBootstrapSetup should fail")
 }
 
